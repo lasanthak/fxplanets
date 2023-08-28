@@ -8,21 +8,25 @@ import javafx.scene.canvas.Canvas
 import javafx.scene.image.Image
 import javafx.scene.input.MouseButton
 import javafx.scene.layout.*
+import javafx.scene.media.Media
+import javafx.scene.media.MediaPlayer
 import javafx.stage.Stage
 import javafx.util.Duration
 import kotlin.math.cos
 import kotlin.math.sin
 
+
 class PlanetsApp : Application() {
     private val width = 1400.0
     private val height = 1000.0
-    private val sun = img("sun.png")
-    private val earth = img("earth.png")
-    private val moon = img("moon.png")
+    private val bgMediaPlayer = backgroundMediaPlayer()
+    private val sun = image("sun.png")
+    private val earth = image("earth.png")
+    private val moon = image("moon.png")
     private val ships = AnimatedImage(
         duration = 0.1, frames = arrayOf(
-            img("ship/s1.png"), img("ship/s2.png"), img("ship/s3.png"),
-            img("ship/s4.png"), img("ship/s5.png"), img("ship/s6.png"),
+            image("ship/s1.png"), image("ship/s2.png"), image("ship/s3.png"),
+            image("ship/s4.png"), image("ship/s5.png"), image("ship/s6.png"),
         )
     )
     private var animate = true
@@ -35,7 +39,7 @@ class PlanetsApp : Application() {
 
     override fun start(stage: Stage) {
         stage.title = "Space"
-        stage.icons.add(0, img("galaxy.png"))
+        stage.icons.add(0, image("galaxy.png"))
         val root = StackPane()
         val scene = Scene(root)
         stage.setScene(scene)
@@ -44,7 +48,7 @@ class PlanetsApp : Application() {
         root.children.addAll(staticCanvas, dynamicCanvas)
         root.background = Background(
             BackgroundImage(
-                img("space.png"), BackgroundRepeat.NO_REPEAT, BackgroundRepeat.NO_REPEAT,
+                image("space.png"), BackgroundRepeat.NO_REPEAT, BackgroundRepeat.NO_REPEAT,
                 BackgroundPosition.CENTER, BackgroundSize(100.0, 100.0, true, true, true, true)
             )
         )
@@ -52,7 +56,7 @@ class PlanetsApp : Application() {
         val centerX = width / 2.0
         val centerY = height / 2.0
         staticCanvas.graphicsContext2D.drawImage(sun, centerX, centerY)
-        val gc = dynamicCanvas.getGraphicsContext2D()
+        val gc = dynamicCanvas.graphicsContext2D
         gc.isImageSmoothing = false
 
         scene.setOnMousePressed {e ->
@@ -60,9 +64,11 @@ class PlanetsApp : Application() {
                 MouseButton.SECONDARY -> {
                     animate = if (animate) {
                         gameLoop.stop()
+                        bgMediaPlayer.pause()
                         false
                     } else {
                         gameLoop.play()
+                        bgMediaPlayer.play()
                         true
                     }
                 }
@@ -123,8 +129,16 @@ class PlanetsApp : Application() {
     }
 }
 
-private fun img(name: String): Image =
+private fun image(name: String): Image =
     Image(PlanetsApp::class.java.getResourceAsStream("img/$name"))
+
+private fun backgroundMediaPlayer(): MediaPlayer {
+    val url = PlanetsApp::class.java.getResource("music/bg_music_return.mp3")?.toExternalForm()
+    val sound = Media(url ?: throw IllegalArgumentException("Invalid music file"))
+    val player = MediaPlayer(sound)
+    player.cycleCount = Int.MAX_VALUE // repeat indefinitely
+    return player
+}
 
 fun main() {
     Application.launch(PlanetsApp::class.java)

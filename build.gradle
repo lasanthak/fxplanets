@@ -37,7 +37,7 @@ tasks.withType(JavaCompile).configureEach {
 
 javafx {
     version = '17.0.8'
-    modules = ['javafx.controls', 'javafx.fxml']
+    modules = ['javafx.controls', 'javafx.media']
 }
 
 dependencies {
