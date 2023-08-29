@@ -38,13 +38,9 @@ class PlanetsApp : Application() {
         val dynamicCanvas = Canvas(width, height)
         root.children.addAll(bgCanvas, staticCanvas, dynamicCanvas)
         root.style = "-fx-background-color:black"
-        bgCanvas.graphicsContext2D.drawImage(
-            imageLib.bgImage(),
-            -400.0 * (1 + Math.random()),
-            -400.0 * (1 + Math.random())
-        )
-        val bgTransX = arrayOf(0.15, 0.07, -0.07, -0.15, -0.07, 0.07, 0.15, 0.07, -0.07, -0.15, -0.07, 0.07)
-        val bgTransY = arrayOf(0.15, 0.07, -0.07, -0.15, -0.07, -0.15, -0.07, 0.07, 0.15, 0.07, -0.07, 0.07)
+        bgCanvas.graphicsContext2D.drawImage(imageLib.bgImage(), 0.0, 0.0)
+        val bgTransX = arrayOf(-0.15, -0.07, 0.07, 0.15, 0.07, -0.07, -0.15, -0.07, 0.07, 0.15, 0.07, -0.07)
+        val bgTransY = arrayOf(-0.15, -0.07, -0.15, -0.07, 0.07, 0.15, 0.07, -0.07, 0.07, 0.15, 0.07, -0.07)
 
         val centerX = width / 2.0
         val centerY = height / 2.0
