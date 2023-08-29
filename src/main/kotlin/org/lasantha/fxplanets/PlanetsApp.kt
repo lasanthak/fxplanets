@@ -5,23 +5,31 @@ import javafx.animation.Timeline
 import javafx.application.Application
 import javafx.scene.Scene
 import javafx.scene.canvas.Canvas
+import javafx.scene.input.KeyCode
 import javafx.scene.input.MouseButton
-import javafx.scene.layout.*
+import javafx.scene.layout.StackPane
 import javafx.stage.Stage
 import javafx.util.Duration
+import kotlinx.coroutines.*
+import java.util.concurrent.Executors
 import kotlin.math.cos
 import kotlin.math.sin
 
 
 class PlanetsApp : Application() {
+    private val scopeJobs = Job()
+    private val scopeThreads = Executors.newFixedThreadPool(4)
+    private val gameScope = CoroutineScope(scopeThreads.asCoroutineDispatcher() + scopeJobs)
+
     private val width = 1400.0
     private val height = 1000.0
     private val imageLib = ImageLib()
     private val musicLib = MusicLib()
+    private val frameDurationS = 0.03 //0.017 -> 60 FPS, 0.02 -> 50 FPS, 0.3 -> 33 FPS
+    private val gameLoop = Timeline()
+    private val appStartTime = System.currentTimeMillis()
 
     private var animate = true
-
-    private val gameLoop = Timeline()
 
     init {
         gameLoop.cycleCount = Timeline.INDEFINITE
@@ -44,7 +52,7 @@ class PlanetsApp : Application() {
 
         val centerX = width / 2.0
         val centerY = height / 2.0
-        staticCanvas.graphicsContext2D.drawImage(imageLib.sun(), centerX, centerY)
+        staticCanvas.graphicsContext2D.drawImage(imageLib.sun.frame(0), centerX, centerY)
         val gc = dynamicCanvas.graphicsContext2D
         gc.isImageSmoothing = false
 
@@ -78,6 +86,14 @@ class PlanetsApp : Application() {
             }
         }
 
+        scene.setOnKeyPressed { e ->
+            logAsync("Key Pressed: ${e.code}")
+            when (e.code) {
+                KeyCode.ESCAPE -> stage.close()
+                else -> {}
+            }
+        }
+
         val earthR = 310.0
         val earthRand = Math.random() * 7.2
         val earthShape = FXShape(gc, imageLib.earth, centerX, centerY)
@@ -91,10 +107,11 @@ class PlanetsApp : Application() {
         var moonExploding = false
         var lastT = 0.0
         val startTime = System.currentTimeMillis()
-        val keyFrame = KeyFrame(Duration.seconds(0.03),  //0.017 -> 60 FPS, 0.02 -> 50 FPS, 0.3 -> 33 FPS
+        val keyFrame = KeyFrame(Duration.seconds(frameDurationS),
             {
-                val elapsedMS = System.currentTimeMillis() - startTime
-                val t = lastT + 0.03
+                val systemTime = System.currentTimeMillis()
+                val elapsedMS = systemTime - startTime
+                val t = lastT + frameDurationS
 
                 earthShape.clear()
                 moonShape.clear()
@@ -110,7 +127,6 @@ class PlanetsApp : Application() {
                     while (itr.hasNext()) {
                         val exp = itr.next()
                         if (exp.running(elapsedMS)) {
-                            exp.clear()
                             exp.draw(
                                 elapsedMS, exp.mapX(moonShape.getLastCenterX()), exp.mapY(moonShape.getLastCenterY())
                             )
@@ -143,8 +159,16 @@ class PlanetsApp : Application() {
                 )
 
                 if (!moonExploding && shipShape.clip(moonShape)) {
+                    logAsync("Collision! Moon & Ship", elapsedMS)
                     moonExploding = true
-                    explosions.add(FXShape(gc, imageLib.explosion(), moonShape.getLastX(), moonShape.getLastY()))
+                    explosions.add(
+                        FXShape(
+                            gc,
+                            imageLib.explosion(elapsedMS),
+                            moonShape.getLastX(),
+                            moonShape.getLastY()
+                        )
+                    )
                     musicLib.explosion.play()
                 }
 
@@ -153,14 +177,41 @@ class PlanetsApp : Application() {
                 bgCanvas.translateX += bgTransX[translateId]
                 bgCanvas.translateY += bgTransY[translateId]
 
+                // ticks roughly every second
+//                if (t.toInt() > lastT.toInt()) {
+//                    logAsync("loop time: ${System.currentTimeMillis() - systemTime}", elapsedMS)
+//                }
+
                 lastT = t
             })
 
         gameLoop.keyFrames.add(keyFrame)
         gameLoop.play()
-        musicLib.bgMusicPlayer.play()
+        //musicLib.bgMusicPlayer.play()
 
         stage.show()
+    }
+
+    override fun stop() {
+        logAsync("Stopping...")
+        runBlocking {
+            for (i in 1..10) {
+                if (gameScope.isActive && scopeJobs.children.count() > 0) {
+                    delay(500)
+                } else {
+                    break
+                }
+            }
+        }
+        gameScope.cancel()
+        scopeThreads.shutdown()
+        println("Done")
+    }
+
+    private fun logAsync(msg: String, time: Long = (System.currentTimeMillis() - appStartTime)) {
+        gameScope.launch {
+            println("[$time] $msg")
+        }
     }
 }
 

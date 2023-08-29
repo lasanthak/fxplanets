@@ -4,39 +4,33 @@ import javafx.scene.image.Image
 import javafx.scene.image.WritableImage
 
 class ImageLib {
+    val sun = StaticImage(image("sun.png"))
     val earth = StaticImage(image("earth.png"))
     val moon = StaticImage(image("moon.png"))
     val ships = MultiLoopImage(
         durationMS = 100, frames = arrayOf(
-            image("ship/s1.png"), image("ship/s2.png"), image("ship/s3.png"),
-            image("ship/s4.png"), image("ship/s5.png"), image("ship/s6.png"),
+            image("ship/s1.png"), image("ship/s2.png"),
+            image("ship/s3.png"), image("ship/s4.png"),
+            image("ship/s5.png"), image("ship/s6.png"),
         )
     )
 
-    fun explosion(): SingleLoopImage {
+    fun explosion(startTime: Long): SingleLoopImage {
         val reader = image("explosion.png").pixelReader
         return SingleLoopImage(
-            durationMS = 100, frames = arrayOf(
-                WritableImage(reader, 0, 0, 128, 128),
-                WritableImage(reader, 128, 0, 128, 128),
-                WritableImage(reader, 256, 0, 128, 128),
-                WritableImage(reader, 384, 0, 128, 128),
-                WritableImage(reader, 0, 128, 128, 128),
-                WritableImage(reader, 128, 128, 128, 128),
-                WritableImage(reader, 256, 128, 128, 128),
-                WritableImage(reader, 384, 128, 128, 128),
-                WritableImage(reader, 0, 256, 128, 128),
-                WritableImage(reader, 128, 256, 128, 128),
-                WritableImage(reader, 256, 256, 128, 128),
-                WritableImage(reader, 384, 256, 128, 128),
-                WritableImage(reader, 0, 384, 128, 128),
-                WritableImage(reader, 128, 384, 128, 128)
+            startTime = startTime, durationMS = 100,
+            frames = arrayOf(
+                WritableImage(reader, 0, 0, 128, 128), WritableImage(reader, 128, 0, 128, 128),
+                WritableImage(reader, 256, 0, 128, 128), WritableImage(reader, 384, 0, 128, 128),
+                WritableImage(reader, 0, 128, 128, 128), WritableImage(reader, 128, 128, 128, 128),
+                WritableImage(reader, 256, 128, 128, 128), WritableImage(reader, 384, 128, 128, 128),
+                WritableImage(reader, 0, 256, 128, 128), WritableImage(reader, 128, 256, 128, 128),
+                WritableImage(reader, 256, 256, 128, 128), WritableImage(reader, 384, 256, 128, 128),
+                WritableImage(reader, 0, 384, 128, 128), WritableImage(reader, 128, 384, 128, 128)
             )
         )
     }
 
-
-    fun sun(): Image = image("sun.png")
     fun bgImage(): Image = image("space.png")
     fun icon(): Image = image("galaxy.png")
 
@@ -76,7 +70,9 @@ class MultiLoopImage(private val durationMS: Int, private val frames: Array<Imag
     override fun frame(time: Long): Image = frames[((time % totalDuration) / durationMS).toInt()]
 }
 
-class SingleLoopImage(private val durationMS: Int, private val frames: Array<Image>) : ImageWrapper {
+class SingleLoopImage(private val startTime: Long,
+                      private val durationMS: Int,
+                      private val frames: Array<Image>) : ImageWrapper {
     init {
         assert(durationMS > 0)
         assert(frames.isNotEmpty())
@@ -91,18 +87,14 @@ class SingleLoopImage(private val durationMS: Int, private val frames: Array<Ima
     override val width = frames[0].width
     override val height = frames[0].height
 
-    private val totalDuration = frames.size * durationMS
-    private var id = 0
-    private var running = true
+    private val endTime = startTime + frames.size * durationMS
 
-    override fun hasFrame(time: Long): Boolean = running
+    override fun hasFrame(time: Long): Boolean {
+        return time < endTime
+    }
+
     override fun frame(time: Long): Image {
-        val curId = ((time % totalDuration) / durationMS).toInt()
-        if (curId < id) {
-            running = false
-        } else if (curId > id) {
-            id++
-        }
+        val id = ((time - startTime).coerceAtLeast(0) / durationMS).toInt()
         return frames[id]
     }
 }

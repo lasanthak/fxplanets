@@ -6,19 +6,19 @@ import javafx.scene.media.MediaPlayer
 
 class MusicLib {
 
-    val bgMusicPlayer = backgroundMediaPlayer()
+    val bgMusicPlayer = createBgMusicPlayer("music/bg_music_return.mp3")
 
-    val explosion = audioClip("music/explosion.mp3")
+    val explosion = createAudioClip("music/explosion.mp3")
 
-    private fun backgroundMediaPlayer(): MediaPlayer {
-        val url = javaClass.getResource("music/bg_music_return.mp3")?.toExternalForm()
+    private fun createBgMusicPlayer(media: String): MediaPlayer {
+        val url = javaClass.getResource(media)?.toExternalForm()
         val sound = Media(url ?: throw IllegalArgumentException("Invalid music file"))
         val player = MediaPlayer(sound)
         player.cycleCount = Int.MAX_VALUE // repeat indefinitely
         return player
     }
 
-    private fun audioClip(media: String): AudioClip {
+    private fun createAudioClip(media: String): AudioClip {
         val url = javaClass.getResource(media)?.toExternalForm()
         return AudioClip(url ?: throw IllegalArgumentException("Invalid audio file"))
     }
