@@ -33,15 +33,18 @@ class PlanetsApp : Application() {
         val root = StackPane()
         val scene = Scene(root)
         stage.setScene(scene)
+        val bgCanvas = Canvas(width, height)
         val staticCanvas = Canvas(width, height)
         val dynamicCanvas = Canvas(width, height)
-        root.children.addAll(staticCanvas, dynamicCanvas)
-        root.background = Background(
-            BackgroundImage(
-                imageLib.bgImage(), BackgroundRepeat.NO_REPEAT, BackgroundRepeat.NO_REPEAT,
-                BackgroundPosition.CENTER, BackgroundSize(100.0, 100.0, true, true, true, true)
-            )
+        root.children.addAll(bgCanvas, staticCanvas, dynamicCanvas)
+        root.style = "-fx-background-color:black"
+        bgCanvas.graphicsContext2D.drawImage(
+            imageLib.bgImage(),
+            -400.0 * (1 + Math.random()),
+            -400.0 * (1 + Math.random())
         )
+        val bgTransX = arrayOf(0.15, 0.07, -0.07, -0.15, -0.07, 0.07, 0.15, 0.07, -0.07, -0.15, -0.07, 0.07)
+        val bgTransY = arrayOf(0.15, 0.07, -0.07, -0.15, -0.07, -0.15, -0.07, 0.07, 0.15, 0.07, -0.07, 0.07)
 
         val centerX = width / 2.0
         val centerY = height / 2.0
@@ -79,16 +82,16 @@ class PlanetsApp : Application() {
             }
         }
 
-        val earthRadius = 330.0
+        val earthR = 310.0
         val earthRand = Math.random() * 7.2
-        val earthShape = ImageWriter(gc, imageLib.earth, centerX, centerY)
-        val moonRadius = 45.0
+        val earthShape = FXShape(gc, imageLib.earth, centerX, centerY)
+        val moonR = 45.0
         val moonRand = Math.random() * 7.2
-        val moonShape = ImageWriter(gc, imageLib.moon, centerX, centerY)
-        val shipRadius = 145.0
+        val moonShape = FXShape(gc, imageLib.moon, centerX, centerY)
+        val shipR = 145.0
         val shipRand = Math.random() * 7.2
-        val shipShape = ImageWriter(gc, imageLib.ships, centerX, centerY)
-        val explosions = mutableListOf<ImageWriter>()
+        val shipShape = FXShape(gc, imageLib.ships, centerX, centerY)
+        val explosions = mutableListOf<FXShape>()
         var moonExploding = false
         var lastT = 0.0
         val startTime = System.currentTimeMillis()
@@ -97,34 +100,13 @@ class PlanetsApp : Application() {
                 val elapsedMS = System.currentTimeMillis() - startTime
                 val t = lastT + 0.03
 
-                val earthT = t * 0.73
                 earthShape.clear()
-                earthShape.draw(
-                    elapsedMS,
-                    centerX + earthRadius * cos(earthT + earthRand) * 1.5,
-                    centerY + earthRadius * sin(earthT + earthRand)
-                )
-
-                val moonT = t * 3.77
                 moonShape.clear()
-                moonShape.draw(
-                    elapsedMS,
-                    earthShape.getLastX() + moonRadius * cos(moonT + moonRand),
-                    earthShape.getLastY() + moonRadius * sin(moonT + moonRand) * 1.4
-                )
-
-                val shipT = t * -1.1
                 shipShape.clear()
-                shipShape.draw(
-                    elapsedMS,
-                    centerX + shipRadius * cos(shipT + shipRand),
-                    centerY + shipRadius * sin(shipT + shipRand) * 1.9
-                )
-
-                if (!moonExploding && shipShape.clip(moonShape)) {
-                    moonExploding = true
-                    explosions.add(ImageWriter(gc, imageLib.explosion(), moonShape.getLastX(), moonShape.getLastY()))
-                    musicLib.explosion.play()
+                if (explosions.isNotEmpty()) {
+                    for (exp in explosions) {
+                        exp.clear()
+                    }
                 }
 
                 if (explosions.isNotEmpty()) {
@@ -137,17 +119,51 @@ class PlanetsApp : Application() {
                                 elapsedMS, exp.mapX(moonShape.getLastCenterX()), exp.mapY(moonShape.getLastCenterY())
                             )
                         } else {
-                            exp.clear()
                             itr.remove()
                             moonExploding = false
                         }
                     }
                 }
 
+                val earthT = t * 0.73
+                earthShape.draw(
+                    elapsedMS,
+                    centerX + earthR * cos(earthT + earthRand) * 1.5,
+                    centerY + earthR * sin(earthT + earthRand)
+                )
+
+                val moonT = t * 3.77
+                moonShape.draw(
+                    elapsedMS,
+                    earthShape.getLastX() + moonR * cos(moonT + moonRand),
+                    earthShape.getLastY() + moonR * sin(moonT + moonRand) * 1.4
+                )
+
+                val shipT = t * -1.1
+                shipShape.draw(
+                    elapsedMS,
+                    centerX + shipR * cos(shipT + shipRand),
+                    centerY + shipR * sin(shipT + shipRand) * 1.9
+                )
+
+                if (!moonExploding && shipShape.clip(moonShape)) {
+                    moonExploding = true
+                    explosions.add(FXShape(gc, imageLib.explosion(), moonShape.getLastX(), moonShape.getLastY()))
+                    musicLib.explosion.play()
+                }
+
+                // Move BG Canvas slowly for star movement effect
+                val translateId = ((elapsedMS % 60000) / (60000 / bgTransX.size)).toInt()
+                bgCanvas.translateX += bgTransX[translateId]
+                bgCanvas.translateY += bgTransY[translateId]
+
                 lastT = t
             })
+
         gameLoop.keyFrames.add(keyFrame)
         gameLoop.play()
+        musicLib.bgMusicPlayer.play()
+
         stage.show()
     }
 }

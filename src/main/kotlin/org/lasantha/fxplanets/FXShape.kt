@@ -3,7 +3,7 @@ package org.lasantha.fxplanets
 import javafx.scene.canvas.GraphicsContext
 import kotlin.math.absoluteValue
 
-class ImageWriter(
+class FXShape(
     private val gc: GraphicsContext, private val image: ImageWrapper,
     initX: Double, initY: Double
 ) {
@@ -27,7 +27,7 @@ class ImageWriter(
 
     fun running(time: Long): Boolean = image.hasFrame(time)
 
-    fun clip(target: ImageWriter): Boolean = (
+    fun clip(target: FXShape): Boolean = (
             lastX.minus(target.getLastX()).absoluteValue <= image.width &&
                     lastY.minus(target.getLastY()).absoluteValue <= image.height
             )
