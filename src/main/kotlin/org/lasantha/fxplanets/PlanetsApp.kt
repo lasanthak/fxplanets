@@ -18,14 +18,14 @@ import kotlin.math.sin
 
 class PlanetsApp : Application() {
     private val scopeJobs = Job()
-    private val scopeThreads = Executors.newFixedThreadPool(4)
+    private val scopeThreads = Executors.newFixedThreadPool(2)
     private val gameScope = CoroutineScope(scopeThreads.asCoroutineDispatcher() + scopeJobs)
 
     private val width = 1400.0
     private val height = 1000.0
     private val imageLib = ImageLib()
     private val musicLib = MusicLib()
-    private val frameDurationS = 0.03 //0.017 -> 60 FPS, 0.02 -> 50 FPS, 0.3 -> 33 FPS
+    private val frameDuration = 30L //17 -> 59 FPS,  20 -> 50 FPS, 30 -> 33 FPS
     private val gameLoop = Timeline()
     private val appStartTime = System.currentTimeMillis()
 
@@ -45,16 +45,20 @@ class PlanetsApp : Application() {
         val staticCanvas = Canvas(width, height)
         val dynamicCanvas = Canvas(width, height)
         root.children.addAll(bgCanvas, staticCanvas, dynamicCanvas)
-        root.style = "-fx-background-color:black"
-        bgCanvas.graphicsContext2D.drawImage(imageLib.bgImage(), 0.0, 0.0)
-        val bgTransX = arrayOf(-0.15, -0.07, 0.07, 0.15, 0.07, -0.07, -0.15, -0.07, 0.07, 0.15, 0.07, -0.07)
-        val bgTransY = arrayOf(-0.15, -0.07, -0.15, -0.07, 0.07, 0.15, 0.07, -0.07, 0.07, 0.15, 0.07, -0.07)
 
         val centerX = width / 2.0
         val centerY = height / 2.0
-        staticCanvas.graphicsContext2D.drawImage(imageLib.sun.frame(0), centerX, centerY)
+        val gcBg = bgCanvas.graphicsContext2D
+        gcBg.isImageSmoothing = false
+        val gcStatic = staticCanvas.graphicsContext2D
+        gcStatic.isImageSmoothing = false
         val gc = dynamicCanvas.graphicsContext2D
         gc.isImageSmoothing = false
+
+        root.style = "-fx-background-color:black"
+        gcBg.drawImage(imageLib.bgImage(), 0.0, 0.0)
+        val bgTransX = arrayOf(-0.15, -0.07, 0.07, 0.15, 0.07, -0.07, -0.15, -0.07, 0.07, 0.15, 0.07, -0.07)
+        val bgTransY = arrayOf(-0.15, -0.07, -0.15, -0.07, 0.07, 0.15, 0.07, -0.07, 0.07, 0.15, 0.07, -0.07)
 
         scene.setOnMousePressed { e ->
             when (e.button) {
@@ -94,42 +98,71 @@ class PlanetsApp : Application() {
             }
         }
 
+        val sunShape = FXShape(gc, imageLib.sun, object : FXLocator {
+            override fun location(time: Long, shape: FXShape): Pair<Double, Double> =
+                Pair(centerX, centerY)
+        })
+
         val earthR = 310.0
         val earthRand = Math.random() * 7.2
-        val earthShape = FXShape(gc, imageLib.earth, centerX, centerY)
-        val moonR = 45.0
-        val moonRand = Math.random() * 7.2
-        val moonShape = FXShape(gc, imageLib.moon, centerX, centerY)
-        val shipR = 145.0
-        val shipRand = Math.random() * 7.2
-        val shipShape = FXShape(gc, imageLib.ships, centerX, centerY)
-        val explosions = mutableListOf<FXShape>()
+        val earthShape = FXShape(gc, imageLib.earth, object : FXLocator {
+            override fun location(time: Long, shape: FXShape): Pair<Double, Double> {
+                val earthT = time * 0.00073
+                return Pair(
+                    centerX + earthR * cos(earthT + earthRand) * 1.5,
+                    centerY + earthR * sin(earthT + earthRand)
+                )
+            }
+        })
+
+        val moonShape = FXShape(gc, imageLib.moon, object : FXLocator {
+            private val moonR = 45.0
+            private val moonRand = Math.random() * 7.2
+            override fun location(time: Long, shape: FXShape): Pair<Double, Double> {
+                val moonT = time * 0.00377
+                return Pair(
+                    earthShape.getLastX() + moonR * cos(moonT + moonRand),
+                    earthShape.getLastY() + moonR * sin(moonT + moonRand) * 1.4
+                )
+            }
+        })
+        val shipShape = FXShape(gc, imageLib.ship, object : FXLocator {
+            private val shipR = 145.0
+            private val shipRand = Math.random() * 0.0072
+            override fun location(time: Long, shape: FXShape): Pair<Double, Double> {
+                val shipT = time * -0.0011
+                return Pair(
+                    centerX + shipR * cos(shipT + shipRand),
+                    centerY + shipR * sin(shipT + shipRand) * 1.9
+                )
+            }
+        })
+        val multiLoopShapes = listOf(sunShape, earthShape, moonShape, shipShape)
+        val singleLoopShapes = mutableListOf<FXShape>()
+
         var moonExploding = false
-        var lastT = 0.0
+        var lastLinearTime = 0L
+        var nextBigTick = 0L
         val startTime = System.currentTimeMillis()
-        val keyFrame = KeyFrame(Duration.seconds(frameDurationS),
+        val keyFrame = KeyFrame(Duration.millis(frameDuration.toDouble()),
             {
                 val systemTime = System.currentTimeMillis()
-                val elapsedMS = systemTime - startTime
-                val t = lastT + frameDurationS
+                val elapsedTime = systemTime - startTime
+                val linearTime = lastLinearTime + frameDuration
 
-                earthShape.clear()
-                moonShape.clear()
-                shipShape.clear()
-                if (explosions.isNotEmpty()) {
-                    for (exp in explosions) {
-                        exp.clear()
-                    }
+                multiLoopShapes.forEach {
+                    it.clear()
+                }
+                singleLoopShapes.forEach {
+                    it.clear()
                 }
 
-                if (explosions.isNotEmpty()) {
-                    val itr = explosions.iterator()
+                if (singleLoopShapes.isNotEmpty()) {
+                    val itr = singleLoopShapes.iterator()
                     while (itr.hasNext()) {
-                        val exp = itr.next()
-                        if (exp.running(elapsedMS)) {
-                            exp.draw(
-                                elapsedMS, exp.mapX(moonShape.getLastCenterX()), exp.mapY(moonShape.getLastCenterY())
-                            )
+                        val current = itr.next()
+                        if (current.running(linearTime)) {
+                            current.draw(linearTime)
                         } else {
                             itr.remove()
                             moonExploding = false
@@ -137,52 +170,48 @@ class PlanetsApp : Application() {
                     }
                 }
 
-                val earthT = t * 0.73
-                earthShape.draw(
-                    elapsedMS,
-                    centerX + earthR * cos(earthT + earthRand) * 1.5,
-                    centerY + earthR * sin(earthT + earthRand)
-                )
-
-                val moonT = t * 3.77
-                moonShape.draw(
-                    elapsedMS,
-                    earthShape.getLastX() + moonR * cos(moonT + moonRand),
-                    earthShape.getLastY() + moonR * sin(moonT + moonRand) * 1.4
-                )
-
-                val shipT = t * -1.1
-                shipShape.draw(
-                    elapsedMS,
-                    centerX + shipR * cos(shipT + shipRand),
-                    centerY + shipR * sin(shipT + shipRand) * 1.9
-                )
+                multiLoopShapes.forEach {
+                    it.draw(linearTime)
+                }
 
                 if (!moonExploding && shipShape.clip(moonShape)) {
-                    logAsync("Collision! Moon & Ship", elapsedMS)
+                    logAsync("Collision! Moon & Ship", elapsedTime)
                     moonExploding = true
-                    explosions.add(
-                        FXShape(
-                            gc,
-                            imageLib.explosion(elapsedMS),
-                            moonShape.getLastX(),
-                            moonShape.getLastY()
-                        )
-                    )
+                    singleLoopShapes.add(FXShape(gc, imageLib.explosion(linearTime), object : FXLocator {
+                        override fun location(time: Long, shape: FXShape): Pair<Double, Double> {
+                            return Pair(
+                                shape.mapX(moonShape.getLastCenterX()), shape.mapY(moonShape.getLastCenterY())
+                            )
+                        }
+                    }))
                     musicLib.explosion.play()
                 }
 
                 // Move BG Canvas slowly for star movement effect
-                val translateId = ((elapsedMS % 60000) / (60000 / bgTransX.size)).toInt()
+                val translateId = ((linearTime % 60000) / (60000 / bgTransX.size)).toInt()
                 bgCanvas.translateX += bgTransX[translateId]
                 bgCanvas.translateY += bgTransY[translateId]
 
                 // ticks roughly every second
-//                if (t.toInt() > lastT.toInt()) {
-//                    logAsync("loop time: ${System.currentTimeMillis() - systemTime}", elapsedMS)
-//                }
+                if ( linearTime > nextBigTick ) {
+                    logAsync("Loop time: ${System.currentTimeMillis() - systemTime} ms", elapsedTime)
+                    nextBigTick = linearTime + 60_000
 
-                lastT = t
+                    val rockShape = FXShape(gc, imageLib.rock1, object : FXLocator {
+                        private val vx = 6 * Math.random()
+                        private val vy = 6 * Math.random()
+                        override fun location(time: Long, shape: FXShape): Pair<Double, Double> {
+                            return Pair(shape.getLastX() + vx, shape.getLastY() + vy)
+                        }
+
+                        override fun running(time: Long, shape: FXShape): Boolean {
+                            return shape.getLastX() < width && shape.getLastY() < height
+                        }
+                    })
+                    singleLoopShapes.add(rockShape)
+                }
+
+                lastLinearTime = linearTime
             })
 
         gameLoop.keyFrames.add(keyFrame)
@@ -210,7 +239,7 @@ class PlanetsApp : Application() {
 
     private fun logAsync(msg: String, time: Long = (System.currentTimeMillis() - appStartTime)) {
         gameScope.launch {
-            println("[$time] $msg")
+            println("[${Thread.currentThread().name}][$time] $msg")
         }
     }
 }

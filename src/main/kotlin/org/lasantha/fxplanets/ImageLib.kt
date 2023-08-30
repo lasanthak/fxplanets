@@ -7,7 +7,7 @@ class ImageLib {
     val sun = StaticImage(image("sun.png"))
     val earth = StaticImage(image("earth.png"))
     val moon = StaticImage(image("moon.png"))
-    val ships = MultiLoopImage(
+    val ship = MultiLoopImage(
         durationMS = 100, frames = arrayOf(
             image("ship/s1.png"), image("ship/s2.png"),
             image("ship/s3.png"), image("ship/s4.png"),
@@ -18,7 +18,7 @@ class ImageLib {
     fun explosion(startTime: Long): SingleLoopImage {
         val reader = image("explosion.png").pixelReader
         return SingleLoopImage(
-            startTime = startTime, durationMS = 100,
+            startTime = startTime, durationMS = 150,
             frames = arrayOf(
                 WritableImage(reader, 0, 0, 128, 128), WritableImage(reader, 128, 0, 128, 128),
                 WritableImage(reader, 256, 0, 128, 128), WritableImage(reader, 384, 0, 128, 128),
@@ -27,6 +27,23 @@ class ImageLib {
                 WritableImage(reader, 0, 256, 128, 128), WritableImage(reader, 128, 256, 128, 128),
                 WritableImage(reader, 256, 256, 128, 128), WritableImage(reader, 384, 256, 128, 128),
                 WritableImage(reader, 0, 384, 128, 128), WritableImage(reader, 128, 384, 128, 128)
+            )
+        )
+    }
+
+    val rock1 = run {
+        val reader = image("rock1.png").pixelReader
+        MultiLoopImage(
+            durationMS = 100,
+            frames = arrayOf(
+                WritableImage(reader, 0, 0, 64, 64), WritableImage(reader, 64, 0, 64, 64),
+                WritableImage(reader, 128, 0, 64, 64), WritableImage(reader, 192, 0, 64, 64),
+                WritableImage(reader, 256, 0, 64, 64), WritableImage(reader, 320, 0, 64, 64),
+                WritableImage(reader, 384, 0, 64, 64), WritableImage(reader, 448, 0, 64, 64),
+                WritableImage(reader, 512, 0, 64, 64), WritableImage(reader, 576, 0, 64, 64),
+                WritableImage(reader, 640, 0, 64, 64), WritableImage(reader, 704, 0, 64, 64),
+                WritableImage(reader, 768, 0, 64, 64), WritableImage(reader, 832, 0, 64, 64),
+                WritableImage(reader, 896, 0, 64, 64), WritableImage(reader, 960, 0, 64, 64),
             )
         )
     }
@@ -71,7 +88,7 @@ class MultiLoopImage(private val durationMS: Int, private val frames: Array<Imag
 }
 
 class SingleLoopImage(private val startTime: Long,
-                      private val durationMS: Int,
+                      private val durationMS: Long,
                       private val frames: Array<Image>) : ImageWrapper {
     init {
         assert(durationMS > 0)
