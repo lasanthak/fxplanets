@@ -5,10 +5,13 @@ import javafx.animation.Timeline
 import javafx.application.Application
 import javafx.scene.Scene
 import javafx.scene.canvas.Canvas
+import javafx.scene.canvas.GraphicsContext
 import javafx.scene.input.KeyCode
 import javafx.scene.input.MouseButton
 import javafx.scene.layout.StackPane
+import javafx.stage.Modality
 import javafx.stage.Stage
+import javafx.stage.StageStyle
 import javafx.util.Duration
 import kotlinx.coroutines.*
 import java.util.concurrent.Executors
@@ -26,7 +29,7 @@ class PlanetsApp : Application() {
     private val height = 1000.0
     private val imageLib = ImageLib()
     private val musicLib = MusicLib()
-    private val frameDuration = 30L //17 -> 59 FPS,  20 -> 50 FPS, 30 -> 33 FPS
+    private val frameDuration = 30L //17 -> 59 fps,  20 -> 50 fps, 30 -> 33 fps, 40 -> 25 fps
     private val gameLoop = Timeline()
     private val appStartTime = System.currentTimeMillis()
 
@@ -39,10 +42,12 @@ class PlanetsApp : Application() {
     override fun start(stage: Stage) {
         stage.title = "Space"
         stage.icons.add(0, imageLib.icon())
+        //stage.initStyle(StageStyle.UTILITY)
+        stage.isResizable = false
         val root = StackPane()
-        val scene = Scene(root)
+        val scene = Scene(root, width, height, false)
         stage.setScene(scene)
-        val bgCanvas = Canvas(width, height)
+        val bgCanvas = Canvas(width * 1.2, height * 1.2)
         val staticCanvas = Canvas(width, height)
         val dynamicCanvas = Canvas(width, height)
         root.children.addAll(bgCanvas, staticCanvas, dynamicCanvas)
@@ -60,6 +65,10 @@ class PlanetsApp : Application() {
         gcBg.drawImage(imageLib.bgImage(), 0.0, 0.0)
         val bgTransX = arrayOf(-0.15, -0.07, 0.07, 0.15, 0.07, -0.07, -0.15, -0.07, 0.07, 0.15, 0.07, -0.07)
         val bgTransY = arrayOf(-0.15, -0.07, -0.15, -0.07, 0.07, 0.15, 0.07, -0.07, 0.07, 0.15, 0.07, -0.07)
+        for (i in bgTransX.indices) {
+            bgTransX[i] = frameDuration.toDouble() * bgTransX[i] / 30.0
+            bgTransY[i] = frameDuration.toDouble() * bgTransY[i] / 30.0
+        }
 
         scene.setOnMousePressed { e ->
             when (e.button) {
@@ -120,7 +129,7 @@ class PlanetsApp : Application() {
                 return (earthShape.getX() + r * cos(t + phase)) to (earthShape.getY() + r * sin(t + phase) * 1.5)
             }
         })
-        val shipShape = FXShape("Space ship", gc, imageLib.ship, object : FXLocator {
+        val shipShape = FXShape("Spaceship", gc, imageLib.ship, object : FXLocator {
             private val r = 145.0
             private val phase = fxRandom.nextDouble() * 0.0072
             override fun location(time: Long, shape: FXShape): Pair<Double, Double> {
@@ -156,50 +165,34 @@ class PlanetsApp : Application() {
                     val s = itr.next()
                     if (!s.drawIfRunning(linearTime)) {
                         itr.remove()
-                        collidingShapes.remove(s) // remove if present
+                        // remove if present
+                        collidingShapes.remove(s).and(logAsync("Removed: $s", elapsedTime) is Unit)
                     }
                 }
             }
-
 
             val toBeRemoved = collisionMap.filter { e -> !e.value.clipBox(e.key) }.map { it.key }.toSet()
             toBeRemoved.forEach { s -> collisionMap.remove(s) }
             for (cs in collidingShapes) {
                 longLivedShapes.filter { s -> cs != s && !collisionMap.contains(s) && cs.clip(s) }.forEach { s ->
-                    logAsync("Collision! (${cs.name}, ${s.name})", elapsedTime)
+                    logAsync("Collision! (${cs.name} & ${s.name})", elapsedTime)
                     collisionMap[s] = cs
-                    shortLivedShapes.add(
-                        FXShape(
-                            "Explosion (${cs.name}, ${s.name})", gc, imageLib.explosion3(linearTime),
-                            object : FXLocator {
-                                override fun location(time: Long, shape: FXShape): Pair<Double, Double> =
-                                    shape.mapX(s.getCenterX()) to shape.mapY(s.getCenterY())
-                            })
-                    )
+                    shortLivedShapes.add(randomExplosion(cs, s, linearTime, gc))
                     musicLib.explosion.play()
                 }
+            }
+
+            if (linearTime > nextAsteroidTick) {
+                nextAsteroidTick = linearTime + 5000 + fxRandom.nextLong(5000)
+                val asteroid = randomAsteroid(linearTime, gc)
+                shortLivedShapes.add(asteroid)
+                collidingShapes.add(asteroid)
             }
 
             // Move BG Canvas slowly for star movement effect
             val translateId = ((linearTime % 60000) / (60000 / bgTransX.size)).toInt()
             bgCanvas.translateX += bgTransX[translateId]
             bgCanvas.translateY += bgTransY[translateId]
-
-            if (linearTime > nextAsteroidTick) {
-                nextAsteroidTick = linearTime + 5000 + fxRandom.nextLong(5000)
-
-                val asteroid = FXShape("Asteroid-$linearTime", gc, imageLib.rock1, object : FXLocator {
-                    private val vx = 6.0 * fxRandom.nextDouble()
-                    private val vy = 6.0 * fxRandom.nextDouble()
-                    override fun location(time: Long, shape: FXShape): Pair<Double, Double> =
-                        shape.getX() + vx to shape.getY() + vy
-
-                    override fun running(time: Long, shape: FXShape): Boolean =
-                        shape.getX() < width && shape.getY() < height
-                })
-                shortLivedShapes.add(asteroid)
-                collidingShapes.add(asteroid)
-            }
 
             if (linearTime > nextBigTick) {
                 logAsync("Loop time: ${System.currentTimeMillis() - systemTime} ms", elapsedTime)
@@ -214,6 +207,44 @@ class PlanetsApp : Application() {
         //musicLib.bgMusicPlayer.play()
 
         stage.show()
+    }
+
+    private fun asteroidLocator(startTime: Long): FXLocator {
+        fun locFun(maxLen: Double, forward: Boolean, add: Boolean): (time: Long, shape: FXShape) -> Double {
+            val v = 0.05 + 0.1 * fxRandom.nextDouble()
+            val c = if (add) (maxLen * 0.8 * fxRandom.nextDouble()) else 0.0
+            return if (forward) {
+                { time, _ -> c + v * (time - startTime) }
+            } else {
+                { time, _ -> maxLen - c - (v * (time - startTime)) }
+            }
+        }
+
+        val addC = fxRandom.nextBoolean()
+        return object : FXLocator {
+            private val fx = locFun(width, fxRandom.nextBoolean(), addC)
+            private val fy = locFun(height, fxRandom.nextBoolean(), !addC)
+
+            override fun location(time: Long, shape: FXShape): Pair<Double, Double> = fx(time, shape) to fy(time, shape)
+
+            override fun running(time: Long, shape: FXShape): Boolean =
+                !(shape.getX() < 0 || shape.getY() < 0 || shape.getX() > width || shape.getY() > height)
+        }
+    }
+
+    private fun randomAsteroid(startTime: Long, gc: GraphicsContext): FXShape {
+        val expImg = if (fxRandom.nextBoolean()) imageLib.rock1 else imageLib.rock2
+        return FXShape("Asteroid-$startTime", gc, expImg, asteroidLocator(startTime))
+    }
+
+    private fun randomExplosion(s1: FXShape, s2: FXShape, startTime: Long, gc: GraphicsContext): FXShape {
+        val expImg = if (fxRandom.nextBoolean()) imageLib.explosion1(startTime) else imageLib.explosion2(startTime)
+        return FXShape(
+            "Explosion<${s1.name}, ${s2.name}>", gc, expImg,
+            object : FXLocator {
+                override fun location(time: Long, shape: FXShape): Pair<Double, Double> =
+                    shape.mapX(s2.getCenterX()) to shape.mapY(s2.getCenterY())
+            })
     }
 
     override fun stop() {
@@ -242,6 +273,6 @@ class PlanetsApp : Application() {
 lateinit var fxRandom: Random
 
 fun main() {
-    fxRandom = Random(234)
+    fxRandom = Random(751) // 62439, 234
     Application.launch(PlanetsApp::class.java)
 }

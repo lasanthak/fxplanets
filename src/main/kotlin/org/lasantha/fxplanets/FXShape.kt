@@ -79,6 +79,8 @@ class FXShape(
     fun mapX(centerX: Double) = centerX - halfWidth
     fun mapY(centerY: Double) = centerY - halfHeight
 
+    override fun toString(): String =
+        "${javaClass.simpleName} { name=$name, x=${String.format("%.2f", x)}, y=${String.format("%.2f", y)} }"
 }
 
 interface FXLocator {
