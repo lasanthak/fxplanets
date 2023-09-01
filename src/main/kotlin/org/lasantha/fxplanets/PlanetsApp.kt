@@ -40,9 +40,8 @@ class PlanetsApp : Application() {
     }
 
     override fun start(stage: Stage) {
-        stage.title = "Space"
+        stage.title = "Planets & Asteroids"
         stage.icons.add(0, imageLib.icon())
-        //stage.initStyle(StageStyle.UTILITY)
         stage.isResizable = false
         val root = StackPane()
         val scene = Scene(root, width, height, false)
@@ -63,8 +62,8 @@ class PlanetsApp : Application() {
 
         root.style = "-fx-background-color:black"
         gcBg.drawImage(imageLib.bgImage(), 0.0, 0.0)
-        val bgTransX = arrayOf(-0.15, -0.07, 0.07, 0.15, 0.07, -0.07, -0.15, -0.07, 0.07, 0.15, 0.07, -0.07)
-        val bgTransY = arrayOf(-0.15, -0.07, -0.15, -0.07, 0.07, 0.15, 0.07, -0.07, 0.07, 0.15, 0.07, -0.07)
+        val bgTransX = arrayOf(-0.12, -0.06, 0.06, 0.12, 0.06, -0.06, -0.12, -0.06, 0.06, 0.12, 0.06, -0.06)
+        val bgTransY = arrayOf(-0.12, -0.06, -0.12, -0.06, 0.06, 0.12, 0.06, -0.06, 0.06, 0.12, 0.06, -0.06)
         for (i in bgTransX.indices) {
             bgTransX[i] = frameDuration.toDouble() * bgTransX[i] / 30.0
             bgTransY[i] = frameDuration.toDouble() * bgTransY[i] / 30.0
@@ -190,7 +189,7 @@ class PlanetsApp : Application() {
             }
 
             // Move BG Canvas slowly for star movement effect
-            val translateId = ((linearTime % 60000) / (60000 / bgTransX.size)).toInt()
+            val translateId = ((linearTime % 120_000) / (120_000 / bgTransX.size)).toInt()
             bgCanvas.translateX += bgTransX[translateId]
             bgCanvas.translateY += bgTransY[translateId]
 
@@ -233,14 +232,14 @@ class PlanetsApp : Application() {
     }
 
     private fun randomAsteroid(startTime: Long, gc: GraphicsContext): FXShape {
-        val expImg = if (fxRandom.nextBoolean()) imageLib.rock1 else imageLib.rock2
-        return FXShape("Asteroid-$startTime", gc, expImg, asteroidLocator(startTime))
+        val image = imageLib.rocks[fxRandom.nextInt(imageLib.rocks.size)]
+        return FXShape("Asteroid-$startTime", gc, image, asteroidLocator(startTime))
     }
 
     private fun randomExplosion(s1: FXShape, s2: FXShape, startTime: Long, gc: GraphicsContext): FXShape {
-        val expImg = if (fxRandom.nextBoolean()) imageLib.explosion1(startTime) else imageLib.explosion2(startTime)
+        val image = if (fxRandom.nextBoolean()) imageLib.explosion1(startTime) else imageLib.explosion2(startTime)
         return FXShape(
-            "Explosion<${s1.name}, ${s2.name}>", gc, expImg,
+            "Explosion<${s1.name}, ${s2.name}>", gc, image,
             object : FXLocator {
                 override fun location(time: Long, shape: FXShape): Pair<Double, Double> =
                     shape.mapX(s2.getCenterX()) to shape.mapY(s2.getCenterY())
@@ -273,6 +272,6 @@ class PlanetsApp : Application() {
 lateinit var fxRandom: Random
 
 fun main() {
-    fxRandom = Random(751) // 62439, 234
+    fxRandom = Random(428) // 62439, 234
     Application.launch(PlanetsApp::class.java)
 }
