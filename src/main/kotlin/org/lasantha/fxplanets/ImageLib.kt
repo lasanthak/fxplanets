@@ -26,13 +26,13 @@ class ImageLib {
         Array(48) { i -> WritableImage(image("explosion1.png").pixelReader, i * 256, 0, 256, 256) }
 
     fun explosion1(startTime: Long): SingleLoopImage =
-        SingleLoopImage(startTime = startTime, durationMS = 40, frames = explosion1Frames)
+        SingleLoopImage(startTime = startTime, durationMS = 50, frames = explosion1Frames)
 
     private val explosion2Frames: Array<Image> =
         Array(64) { i -> WritableImage(image("explosion2.png").pixelReader, i * 192, 0, 192, 192) }
 
     fun explosion2(startTime: Long): SingleLoopImage =
-        SingleLoopImage(startTime = startTime, durationMS = 40, frames = explosion2Frames)
+        SingleLoopImage(startTime = startTime, durationMS = 50, frames = explosion2Frames)
 
     val rock1 = run {
         val reader = image("rock1.png").pixelReader

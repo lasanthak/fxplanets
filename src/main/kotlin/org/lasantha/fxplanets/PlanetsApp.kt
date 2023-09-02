@@ -13,7 +13,6 @@ import javafx.stage.Stage
 import javafx.util.Duration
 import kotlinx.coroutines.*
 import java.util.concurrent.Executors
-import java.util.concurrent.ThreadFactory
 import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.random.Random
@@ -23,13 +22,11 @@ import kotlin.random.Random
 //40 fps -> frame duration 25 ms
 //33 fps -> frame duration 30 ms
 //25 fps -> frame duration 40 ms
-const val FPS = 33
+const val FPS = 124
 
 class PlanetsApp : Application() {
+    private val scopeThreads = Executors.newFixedThreadPool(2, GameThreadFactory())
     private val scopeJobs = Job()
-    private val threadFactory: ThreadFactory = ThreadFactory { Thread() }
-
-    private val scopeThreads = Executors.newFixedThreadPool(2)
     private val gameScope = CoroutineScope(scopeThreads.asCoroutineDispatcher() + scopeJobs)
 
     private val width = 1400.0
@@ -277,7 +274,8 @@ class PlanetsApp : Application() {
 
     private fun logAsync(msg: String, time: Long = 0L) {
         gameScope.launch {
-            println("[${Thread.currentThread().name}][$time][${System.currentTimeMillis() - appStartTime}] $msg")
+            val sysTime = System.currentTimeMillis() - appStartTime
+            println("[${Thread.currentThread().name}][$sysTime][$time] $msg")
         }
     }
 }
