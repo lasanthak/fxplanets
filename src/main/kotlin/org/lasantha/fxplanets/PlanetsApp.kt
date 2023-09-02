@@ -9,19 +9,26 @@ import javafx.scene.canvas.GraphicsContext
 import javafx.scene.input.KeyCode
 import javafx.scene.input.MouseButton
 import javafx.scene.layout.StackPane
-import javafx.stage.Modality
 import javafx.stage.Stage
-import javafx.stage.StageStyle
 import javafx.util.Duration
 import kotlinx.coroutines.*
 import java.util.concurrent.Executors
+import java.util.concurrent.ThreadFactory
 import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.random.Random
 
+//60 fps -> frame duration 17 ms
+//50 fps -> frame duration 20 ms
+//40 fps -> frame duration 25 ms
+//33 fps -> frame duration 30 ms
+//25 fps -> frame duration 40 ms
+const val FPS = 33
 
 class PlanetsApp : Application() {
     private val scopeJobs = Job()
+    private val threadFactory: ThreadFactory = ThreadFactory { Thread() }
+
     private val scopeThreads = Executors.newFixedThreadPool(2)
     private val gameScope = CoroutineScope(scopeThreads.asCoroutineDispatcher() + scopeJobs)
 
@@ -29,11 +36,13 @@ class PlanetsApp : Application() {
     private val height = 1000.0
     private val imageLib = ImageLib()
     private val musicLib = MusicLib()
-    private val frameDuration = 30L //17 -> 59 fps,  20 -> 50 fps, 30 -> 33 fps, 40 -> 25 fps
+    private val frameDuration = 1000L/FPS
     private val gameLoop = Timeline()
     private val appStartTime = System.currentTimeMillis()
 
     private var animate = true
+    private var loopCount = 0L
+    private var totalTime = 0L
 
     init {
         gameLoop.cycleCount = Timeline.INDEFINITE
@@ -142,9 +151,9 @@ class PlanetsApp : Application() {
         val collisionMap = mutableMapOf<FXShape, FXShape>()
 
         var lastLinearTime = 0L
-        var nextBigTick = 0L
-        var nextAsteroidTick = 0L
         val startTime = System.currentTimeMillis()
+        var nextAsteroidTick = 1500L
+        var nextBigTick = 3000L
 
         val keyFrame = KeyFrame(Duration.millis(frameDuration.toDouble()), {
             val systemTime = System.currentTimeMillis()
@@ -193,8 +202,12 @@ class PlanetsApp : Application() {
             bgCanvas.translateX += bgTransX[translateId]
             bgCanvas.translateY += bgTransY[translateId]
 
+            loopCount++
+            totalTime += System.currentTimeMillis() - systemTime
             if (linearTime > nextBigTick) {
-                logAsync("Loop time: ${System.currentTimeMillis() - systemTime} ms", elapsedTime)
+                val averageTime = String.format("%.2f", totalTime.toDouble() / loopCount.toDouble())
+                logAsync("Metrics: totalTime=$totalTime ms, loopCount=$loopCount, averageTime=$averageTime ms",
+                    elapsedTime)
                 nextBigTick = linearTime + 60_000
             }
 
@@ -262,9 +275,9 @@ class PlanetsApp : Application() {
         println("Done")
     }
 
-    private fun logAsync(msg: String, time: Long = (System.currentTimeMillis() - appStartTime)) {
+    private fun logAsync(msg: String, time: Long = 0L) {
         gameScope.launch {
-            println("[${Thread.currentThread().name}][$time] $msg")
+            println("[${Thread.currentThread().name}][$time][${System.currentTimeMillis() - appStartTime}] $msg")
         }
     }
 }
