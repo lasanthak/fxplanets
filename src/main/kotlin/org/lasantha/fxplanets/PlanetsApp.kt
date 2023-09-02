@@ -22,7 +22,7 @@ import kotlin.random.Random
 //40 fps -> frame duration 25 ms
 //33 fps -> frame duration 30 ms
 //25 fps -> frame duration 40 ms
-const val FPS = 124
+const val FPS = 60
 
 class PlanetsApp : Application() {
     private val scopeThreads = Executors.newFixedThreadPool(2, GameThreadFactory())
@@ -52,7 +52,7 @@ class PlanetsApp : Application() {
         val root = StackPane()
         val scene = Scene(root, width, height, false)
         stage.setScene(scene)
-        val bgCanvas = Canvas(width * 1.2, height * 1.2)
+        val bgCanvas = Canvas(width * 1.4, height * 1.4)
         val staticCanvas = Canvas(width, height)
         val dynamicCanvas = Canvas(width, height)
         root.children.addAll(bgCanvas, staticCanvas, dynamicCanvas)
