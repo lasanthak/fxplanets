@@ -17,23 +17,32 @@ import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.random.Random
 
-//60 fps -> frame duration 17 ms
-//50 fps -> frame duration 20 ms
-//40 fps -> frame duration 25 ms
-//33 fps -> frame duration 30 ms
-//25 fps -> frame duration 40 ms
-const val FPS = 60
+object AppConfig {
+    //60 fps -> frame duration 17 ms
+    //50 fps -> frame duration 20 ms
+    //40 fps -> frame duration 25 ms
+    //33 fps -> frame duration 30 ms
+    //25 fps -> frame duration 40 ms
+    var fps = 60
+
+    var mainAudioEnabled = false
+    var soundEnabled = true
+    var musicEnabled = true
+
+    var width = 1400.0
+    var height = 1000.0
+
+    var debug = false
+}
 
 class PlanetsApp : Application() {
     private val scopeThreads = Executors.newFixedThreadPool(2, GameThreadFactory())
     private val scopeJobs = Job()
     private val gameScope = CoroutineScope(scopeThreads.asCoroutineDispatcher() + scopeJobs)
 
-    private val width = 1400.0
-    private val height = 1000.0
     private val imageLib = ImageLib()
     private val musicLib = MusicLib()
-    private val frameDuration = 1000L/FPS
+    private val frameDuration = 1000L / AppConfig.fps
     private val gameLoop = Timeline()
     private val appStartTime = System.currentTimeMillis()
 
@@ -50,15 +59,15 @@ class PlanetsApp : Application() {
         stage.icons.add(0, imageLib.icon())
         stage.isResizable = false
         val root = StackPane()
-        val scene = Scene(root, width, height, false)
+        val scene = Scene(root, AppConfig.width, AppConfig.height, false)
         stage.setScene(scene)
-        val bgCanvas = Canvas(width * 1.4, height * 1.4)
-        val staticCanvas = Canvas(width, height)
-        val dynamicCanvas = Canvas(width, height)
+        val bgCanvas = Canvas(AppConfig.width * 1.4, AppConfig.height * 1.4)
+        val staticCanvas = Canvas(AppConfig.width, AppConfig.height)
+        val dynamicCanvas = Canvas(AppConfig.width, AppConfig.height)
         root.children.addAll(bgCanvas, staticCanvas, dynamicCanvas)
 
-        val centerX = width / 2.0
-        val centerY = height / 2.0
+        val centerX = AppConfig.width / 2.0
+        val centerY = AppConfig.height / 2.0
         val gcBg = bgCanvas.graphicsContext2D
         gcBg.isImageSmoothing = false
         val gcStatic = staticCanvas.graphicsContext2D
@@ -80,11 +89,11 @@ class PlanetsApp : Application() {
                 MouseButton.SECONDARY -> {
                     animate = if (animate) {
                         gameLoop.stop()
-                        musicLib.bgMusicPlayer.pause()
+                        musicLib.pauseMusic()
                         false
                     } else {
                         gameLoop.play()
-                        musicLib.bgMusicPlayer.play()
+                        musicLib.playMusic()
                         true
                     }
                 }
@@ -106,7 +115,9 @@ class PlanetsApp : Application() {
         }
 
         scene.setOnKeyPressed { e ->
-            logAsync("Key Pressed: ${e.code}")
+            if (AppConfig.debug) {
+                logAsync("Key Pressed: ${e.code}")
+            }
             when (e.code) {
                 KeyCode.ESCAPE -> stage.close()
                 else -> {}
@@ -170,8 +181,11 @@ class PlanetsApp : Application() {
                     val s = itr.next()
                     if (!s.drawIfRunning(linearTime)) {
                         itr.remove()
+                        if (AppConfig.debug) {
+                            logAsync("Removed: $s", elapsedTime)
+                        }
                         // remove if present
-                        collidingShapes.remove(s).and(logAsync("Removed: $s", elapsedTime) is Unit)
+                        collidingShapes.remove(s)
                     }
                 }
             }
@@ -180,10 +194,14 @@ class PlanetsApp : Application() {
             toBeRemoved.forEach { s -> collisionMap.remove(s) }
             for (cs in collidingShapes) {
                 longLivedShapes.filter { s -> cs != s && !collisionMap.contains(s) && cs.clip(s) }.forEach { s ->
-                    logAsync("Collision! (${cs.name} & ${s.name})", elapsedTime)
+                    if (AppConfig.debug) {
+                        logAsync("Collision! (${cs.name} & ${s.name})", elapsedTime)
+                    }
                     collisionMap[s] = cs
                     shortLivedShapes.add(randomExplosion(cs, s, linearTime, gc))
-                    musicLib.explosion.play()
+                    if (AppConfig.mainAudioEnabled && AppConfig.soundEnabled) {
+                        musicLib.explosion.play()
+                    }
                 }
             }
 
@@ -202,9 +220,11 @@ class PlanetsApp : Application() {
             loopCount++
             totalTime += System.currentTimeMillis() - systemTime
             if (linearTime > nextBigTick) {
-                val averageTime = String.format("%.2f", totalTime.toDouble() / loopCount.toDouble())
-                logAsync("Metrics: totalTime=$totalTime ms, loopCount=$loopCount, averageTime=$averageTime ms",
-                    elapsedTime)
+                val averageTime = String.format("%.3f", totalTime.toDouble() / loopCount.toDouble())
+                logAsync(
+                    "Metrics: totalTime=${totalTime}ms, loopCount=$loopCount, averageTime=${averageTime}ms",
+                    elapsedTime
+                )
                 nextBigTick = linearTime + 60_000
             }
 
@@ -213,7 +233,7 @@ class PlanetsApp : Application() {
 
         gameLoop.keyFrames.add(keyFrame)
         gameLoop.play()
-        //musicLib.bgMusicPlayer.play()
+        musicLib.playMusic()
 
         stage.show()
     }
@@ -231,13 +251,13 @@ class PlanetsApp : Application() {
 
         val addC = fxRandom.nextBoolean()
         return object : FXLocator {
-            private val fx = locFun(width, fxRandom.nextBoolean(), addC)
-            private val fy = locFun(height, fxRandom.nextBoolean(), !addC)
+            private val fx = locFun(AppConfig.width, fxRandom.nextBoolean(), addC)
+            private val fy = locFun(AppConfig.height, fxRandom.nextBoolean(), !addC)
 
             override fun location(time: Long, shape: FXShape): Pair<Double, Double> = fx(time, shape) to fy(time, shape)
 
-            override fun running(time: Long, shape: FXShape): Boolean =
-                !(shape.getX() < 0 || shape.getY() < 0 || shape.getX() > width || shape.getY() > height)
+            override fun running(time: Long, shape: FXShape): Boolean = !(shape.getX() < 0 || shape.getY() < 0 ||
+                    shape.getX() > AppConfig.width || shape.getY() > AppConfig.height)
         }
     }
 
@@ -272,10 +292,12 @@ class PlanetsApp : Application() {
         println("Done")
     }
 
-    private fun logAsync(msg: String, time: Long = 0L) {
+    private fun logAsync(msg: String, time: Long? = null) {
         gameScope.launch {
-            val sysTime = System.currentTimeMillis() - appStartTime
-            println("[${Thread.currentThread().name}][$sysTime][$time] $msg")
+            val sysT = System.currentTimeMillis() - appStartTime
+            val tStr = time?.toString() ?: ""
+            val thread = Thread.currentThread().name
+            println("[$thread][$sysT][$tStr] $msg")
         }
     }
 }

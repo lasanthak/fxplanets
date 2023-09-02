@@ -6,9 +6,21 @@ import javafx.scene.media.MediaPlayer
 
 class MusicLib {
 
-    val bgMusicPlayer = createBgMusicPlayer("music/bg_music_return.mp3")
+    private val bgMusicPlayer = createBgMusicPlayer("music/bg_music_return.mp3")
 
     val explosion = createAudioClip("music/explosion.mp3")
+
+    fun playMusic() {
+        if (AppConfig.mainAudioEnabled && AppConfig.musicEnabled) {
+            bgMusicPlayer.play()
+        }
+    }
+
+    fun pauseMusic() {
+        if (AppConfig.mainAudioEnabled && AppConfig.musicEnabled) {
+            bgMusicPlayer.pause()
+        }
+    }
 
     private fun createBgMusicPlayer(media: String): MediaPlayer {
         val url = javaClass.getResource(media)?.toExternalForm()

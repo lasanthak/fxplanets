@@ -7,52 +7,40 @@ class ImageLib {
     val sun = StaticImage(image("sun.png"))
     val moon = StaticImage(image("moon.png"))
     val ship = MultiLoopImage(
-        durationMS = 100, frames = arrayOf(
-            image("ship/s1.png"), image("ship/s2.png"),
-            image("ship/s3.png"), image("ship/s4.png"),
-            image("ship/s5.png"), image("ship/s6.png"),
+        duration = 100, frames = arrayOf(
+            image("ship/s1.png"), image("ship/s2.png"), image("ship/s3.png"),
+            image("ship/s4.png"), image("ship/s5.png"), image("ship/s6.png"),
         )
     )
 
     val earth = run {
-        val reader = image("earth.png").pixelReader
-        MultiLoopImage(
-            durationMS = 50,
-            frames = Array(256) { i -> WritableImage(reader, (i % 16) * 40, (i / 16) * 40, 40, 40) }
-        )
+        val r = image("earth.png").pixelReader
+        MultiLoopImage(duration = 50,
+            frames = Array(256) { i -> WritableImage(r, (i % 16) * 40, (i / 16) * 40, 40, 40) })
     }
 
-    private val explosion1Frames: Array<Image> =
+    private val exp1Frames: Array<Image> =
         Array(48) { i -> WritableImage(image("explosion1.png").pixelReader, i * 256, 0, 256, 256) }
 
     fun explosion1(startTime: Long): SingleLoopImage =
-        SingleLoopImage(startTime = startTime, durationMS = 50, frames = explosion1Frames)
+        SingleLoopImage(startTime = startTime, duration = 50, frames = exp1Frames)
 
-    private val explosion2Frames: Array<Image> =
+    private val exp2Frames: Array<Image> =
         Array(64) { i -> WritableImage(image("explosion2.png").pixelReader, i * 192, 0, 192, 192) }
 
     fun explosion2(startTime: Long): SingleLoopImage =
-        SingleLoopImage(startTime = startTime, durationMS = 50, frames = explosion2Frames)
+        SingleLoopImage(startTime = startTime, duration = 50, frames = exp2Frames)
 
-    val rock1 = run {
-        val reader = image("rock1.png").pixelReader
-        MultiLoopImage(durationMS = 100,
-            frames = Array(16) { i -> WritableImage(reader, i * 64, 0, 64, 64) }
+    val rocks = run {
+        val r1 = image("rock1.png").pixelReader
+        val r2 = image("rock2.png").pixelReader
+        listOf(
+            MultiLoopImage(duration = 100, frames = Array(16) { i -> WritableImage(r1, i * 64, 0, 64, 64) }),
+            MultiLoopImage(duration = 100, frames = Array(16) { i -> WritableImage(r1, (15 - i) * 64, 0, 64, 64) }),
+            MultiLoopImage(duration = 100, frames = Array(16) { i -> WritableImage(r2, i * 32, 0, 32, 32) }),
+            MultiLoopImage(duration = 100, frames = Array(16) { i -> WritableImage(r2, (15 - i) * 32, 0, 32, 32) })
         )
     }
-
-    val rock2 = MultiLoopImage(durationMS = 100, frames = rock1.frames().reversed().toTypedArray())
-
-    val rock3 = run {
-        val reader = image("rock2.png").pixelReader
-        MultiLoopImage(durationMS = 100,
-            frames = Array(16) { i -> WritableImage(reader, i * 32, 0, 32, 32) }
-        )
-    }
-
-    val rock4 = MultiLoopImage(durationMS = 100, frames = rock3.frames().reversed().toTypedArray())
-
-    val rocks = listOf(rock1, rock2, rock3, rock4)
 
     fun bgImage(): Image = image("space.png")
     fun icon(): Image = image("galaxy.png")
@@ -66,65 +54,53 @@ sealed interface ImageWrapper {
     val height: Double
     fun hasFrame(time: Long): Boolean = true
     fun frame(time: Long): Image
-
-    fun frames(): List<Image>
 }
 
 class StaticImage(private val image: Image) : ImageWrapper {
     override val width = image.width
     override val height = image.height
-    override fun frame(time: Long): Image = image
-
-    override fun frames(): List<Image> = listOf(image)
+    override fun frame(time: Long) = image
 }
 
-class MultiLoopImage(private val durationMS: Long, private val frames: Array<Image>) : ImageWrapper {
+class MultiLoopImage(private val duration: Long, private val frames: Array<Image>) : ImageWrapper {
     init {
-        assert(durationMS > 0)
+        assert(duration > 0)
         assert(frames.isNotEmpty())
         val w = frames[0].width.toInt()
         val h = frames[0].height.toInt()
-        for (frame in frames) {
-            assert(w == frame.width.toInt())
-            assert(h == frame.height.toInt())
+        for (f in frames) {
+            assert(w == f.width.toInt())
+            assert(h == f.height.toInt())
+        }
+    }
+
+    private val totalDuration = frames.size * duration
+
+    override val width = frames[0].width
+    override val height = frames[0].height
+
+    override fun frame(time: Long) = frames[((time % totalDuration) / duration).toInt()]
+}
+
+class SingleLoopImage(private val startTime: Long, private val duration: Long, private val frames: Array<Image>) :
+    ImageWrapper {
+    init {
+        assert(duration > 0)
+        assert(frames.isNotEmpty())
+        val w = frames[0].width.toInt()
+        val h = frames[0].height.toInt()
+        for (f in frames) {
+            assert(w == f.width.toInt())
+            assert(h == f.height.toInt())
         }
     }
 
     override val width = frames[0].width
     override val height = frames[0].height
 
-    private val totalDuration = frames.size * durationMS
-    override fun frame(time: Long): Image = frames[((time % totalDuration) / durationMS).toInt()]
+    private val endTime = startTime + frames.size * duration
 
-    override fun frames(): List<Image> = frames.toList()
-}
+    override fun hasFrame(time: Long) = time < endTime
 
-class SingleLoopImage(private val startTime: Long, private val durationMS: Long,
-                      private val frames: Array<Image>) : ImageWrapper {
-    init {
-        assert(durationMS > 0)
-        assert(frames.isNotEmpty())
-        val w = frames[0].width.toInt()
-        val h = frames[0].height.toInt()
-        for (frame in frames) {
-            assert(w == frame.width.toInt())
-            assert(h == frame.height.toInt())
-        }
-    }
-
-    override val width = frames[0].width
-    override val height = frames[0].height
-
-    private val endTime = startTime + frames.size * durationMS
-
-    override fun hasFrame(time: Long): Boolean {
-        return time < endTime
-    }
-
-    override fun frame(time: Long): Image {
-        val id = ((time - startTime).coerceAtLeast(0) / durationMS).toInt()
-        return frames[id]
-    }
-
-    override fun frames(): List<Image> = frames.toList()
+    override fun frame(time: Long) = frames[((time - startTime).coerceAtLeast(0) / duration).toInt()]
 }
