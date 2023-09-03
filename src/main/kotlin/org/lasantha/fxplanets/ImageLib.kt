@@ -4,7 +4,13 @@ import javafx.scene.image.Image
 import javafx.scene.image.WritableImage
 
 class ImageLib {
-    val sun = StaticImage(image("sun.png"))
+    val fighter = run {
+        val r = image("fighter.png").pixelReader
+        LRLoopImage(duration = 100,
+            frames = Array(7) { i -> WritableImage(r, i * 64, 0, 64, 64) })
+    }
+
+    val sun = StaticImage(WritableImage(image("sun.png").pixelReader, 4, 4, 80, 80))
 
     val planet = StaticImage(image("planet1.png"))
 
@@ -36,17 +42,20 @@ class ImageLib {
         val r1 = image("rock1.png").pixelReader
         val r2 = image("rock2.png").pixelReader
         val r3r = Array(48) { image("rock3/$it.png").pixelReader }
+        val r4r = Array(60) { image("rock4/$it.png").pixelReader }
         val blr = Array(60) { image("blob/$it.png").pixelReader }
+        val shr = Array(6) { image("ship/s${it + 1}.png").pixelReader }
         listOf(
-            MultiLoopImage(100, Array(16) { WritableImage(r1, (it * 64) + 11, 11, 40, 40) }),
-            MultiLoopImage(100, Array(16) { WritableImage(r1, (15 - it) * 64 + 11, 11, 40, 40) }),
+            MultiLoopImage(100, Array(16) { WritableImage(r1, (it * 64) + 15, 15, 34, 34) }),
+            MultiLoopImage(100, Array(16) { WritableImage(r1, (15 - it) * 64 + 15, 15, 34, 34) }),
             MultiLoopImage(100, Array(16) { WritableImage(r2, it * 32, 0, 32, 32) }),
             MultiLoopImage(100, Array(16) { WritableImage(r2, (15 - it) * 32, 0, 32, 32) }),
-            MultiLoopImage(70, Array(48) { i -> WritableImage(r3r[i], 2, 2, 36, 36) }),
-            MultiLoopImage(70, Array(48) { i -> WritableImage(r3r[47 - i], 2, 2, 36, 36) }),
-            MultiLoopImage(50, Array(60) { i -> WritableImage(blr[i], 9, 14, 42, 42) }),
-            MultiLoopImage(100, Array(6) { i -> image("ship/s${i + 1}.png") }),
-        )
+            MultiLoopImage(70, Array(48) { WritableImage(r3r[it], 2, 2, 36, 36) }),
+            MultiLoopImage(70, Array(48) { WritableImage(r3r[47 - it], 2, 2, 36, 36) }),
+            MultiLoopImage(50, Array(60) { WritableImage(r4r[it], 1, 1, 38, 38) }),
+            MultiLoopImage(50, Array(60) { WritableImage(blr[it], 9, 14, 42, 42) }),
+            MultiLoopImage(100, Array(6) { WritableImage(shr[it], 0, 5, 39, 28) }),
+        ).shuffled(AppConfig.fxRandom)
     }
 
     fun bgImage(): Image = image("space.png")
@@ -110,4 +119,23 @@ class SingleLoopImage(private val startTime: Long, private val duration: Long, p
     override fun hasFrame(time: Long) = time < endTime
 
     override fun frame(time: Long) = frames[((time - startTime).coerceAtLeast(0) / duration).toInt()]
+}
+
+class LRLoopImage(private val duration: Long, private val frames: Array<Image>) : ImageWrapper {
+    init {
+        assert(duration > 0)
+        assert(frames.isNotEmpty())
+        assert(frames.size % 2 == 1)
+        val w = frames[0].width.toInt()
+        val h = frames[0].height.toInt()
+        for (f in frames) {
+            assert(w == f.width.toInt())
+            assert(h == f.height.toInt())
+        }
+    }
+
+    override val width = frames[0].width
+    override val height = frames[0].height
+
+    override fun frame(time: Long) = frames[frames.size / 2]
 }

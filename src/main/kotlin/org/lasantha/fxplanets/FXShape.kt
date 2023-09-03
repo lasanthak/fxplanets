@@ -8,8 +8,6 @@ class FXShape(
     private val gc: GraphicsContext,
     private val image: ImageWrapper,
     private val locator: FXLocator,
-    private val clipW: Double = image.width,
-    private val clipH: Double = image.height
 ) {
     private var running = true
 
@@ -19,8 +17,8 @@ class FXShape(
     private var lastX = Double.NaN
     private var lastY = Double.NaN
 
-    private val clipHalfW = clipW / 2.0
-    private val clipHalfH = clipH / 2.0
+    private val halfW = image.width / 2.0
+    private val halfH = image.height / 2.0
 
     fun update(time: Long) {
         if (running(time)) {
@@ -59,16 +57,16 @@ class FXShape(
 
     fun clipBox(target: FXShape): Boolean {
         val xClips = if (x < target.getX()) {
-            target.getX() - x < clipW
+            target.getX() - x < image.width
         } else {
-            x - target.getX() < target.clipW
+            x - target.getX() < target.image.width
         }
 
         if (xClips) {
             return if (y < target.getY()) {
-                target.getY() - y < clipH
+                target.getY() - y < image.height
             } else {
-                y - target.getY() < target.clipH
+                y - target.getY() < target.image.height
             }
         }
 
@@ -76,16 +74,16 @@ class FXShape(
     }
 
     fun clipCircle(target: FXShape): Boolean =
-        ((x - target.getX()).pow(2) + (y - target.getY()).pow(2)) < (clipHalfH + target.clipHalfH).pow(2)
+        ((x - target.getX()).pow(2) + (y - target.getY()).pow(2)) < (halfH + target.halfH).pow(2)
 
     fun getX() = x
     fun getY() = y
 
-    fun getCenterX() = x + clipHalfW
-    fun getCenterY() = y + clipHalfH
+    fun getCenterX() = x + halfW
+    fun getCenterY() = y + halfH
 
-    fun mapX(centerX: Double) = centerX - clipHalfW
-    fun mapY(centerY: Double) = centerY - clipHalfH
+    fun mapX(centerX: Double) = centerX - halfW
+    fun mapY(centerY: Double) = centerY - halfH
 
     override fun toString(): String =
         "${javaClass.simpleName}{name=$name, x=${String.format("%.2f", x)}, y=${String.format("%.2f", y)}}"
