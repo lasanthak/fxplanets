@@ -1,5 +1,6 @@
 # FxPlanets
-Animation graphics project using JavaFX and Kotlin
+
+Animation graphics project using JavaFX and Kotlin.
 
 ![FxPlanets_2023-08-30.png](docs%2FFxPlanets_2023-08-30.png)
 

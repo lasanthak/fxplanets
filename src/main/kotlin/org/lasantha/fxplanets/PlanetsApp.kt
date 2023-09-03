@@ -11,7 +11,14 @@ import javafx.scene.input.MouseButton
 import javafx.scene.layout.StackPane
 import javafx.stage.Stage
 import javafx.util.Duration
-import kotlinx.coroutines.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.asCoroutineDispatcher
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import java.util.concurrent.Executors
 import kotlin.math.cos
 import kotlin.math.sin
@@ -32,7 +39,7 @@ object AppConfig {
     var width = 1400.0
     var height = 1000.0
 
-    var debug = false
+    var debug = true
 }
 
 class PlanetsApp : Application() {
@@ -154,82 +161,75 @@ class PlanetsApp : Application() {
                 return (centerX + r * cos(t + phase)) to (centerY + r * sin(t + phase) * 1.9)
             }
         })
-        val longLivedShapes = listOf(sunShape, moonShape, earthShape, shipShape)
-        val shortLivedShapes = mutableListOf<FXShape>()
-        val collidingShapes = mutableListOf(shipShape)
+        val longLivedShapes = LinkedHashSet<FXShape>()
+        val shortLivedShapes = LinkedHashSet<FXShape>()
+        val collidingShapes = LinkedHashSet<FXShape>()
         val collisionMap = mutableMapOf<FXShape, FXShape>()
 
-        var lastLinearTime = 0L
-        val startTime = System.currentTimeMillis()
+        longLivedShapes.addAll(listOf(sunShape, moonShape, earthShape, shipShape))
+        collidingShapes.addAll(listOf(shipShape))
+
+        var lastLinearT = 0L
         var nextAsteroidTick = 1500L
         var nextBigTick = 3000L
-
+        val gameStartT = System.currentTimeMillis()
         val keyFrame = KeyFrame(Duration.millis(frameDuration.toDouble()), {
-            val systemTime = System.currentTimeMillis()
-            val elapsedTime = systemTime - startTime
-            val linearTime = lastLinearTime + frameDuration
+            val loopStartT = System.currentTimeMillis()
+            val elapsedT = loopStartT - gameStartT
+            val linearT = lastLinearT + frameDuration
 
-            longLivedShapes.forEach { it.update(linearTime) }
-            shortLivedShapes.forEach { it.update(linearTime) }
+            longLivedShapes.forEach { it.update(linearT) }
+            shortLivedShapes.forEach { it.update(linearT) }
 
             longLivedShapes.forEach { it.clear() }
             shortLivedShapes.forEach { it.clear() }
 
-            longLivedShapes.forEach { it.draw(linearTime) }
-            if (shortLivedShapes.isNotEmpty()) {
-                val itr = shortLivedShapes.iterator()
-                while (itr.hasNext()) {
-                    val s = itr.next()
-                    if (!s.drawIfRunning(linearTime)) {
-                        itr.remove()
-                        if (AppConfig.debug) {
-                            logAsync("Removed: $s", elapsedTime)
-                        }
-                        // remove if present
-                        collidingShapes.remove(s)
-                    }
+            longLivedShapes.forEach { it.draw(linearT) }
+            shortLivedShapes.filterNot { it.drawIfRunning(linearT) }.forEach {
+                shortLivedShapes.remove(it)
+                collidingShapes.remove(it) // remove if present
+                if (AppConfig.debug) {
+                    logAsync("Removed: $it", elapsedT)
                 }
             }
 
-            val toBeRemoved = collisionMap.filter { e -> !e.value.clipBox(e.key) }.map { it.key }.toSet()
-            toBeRemoved.forEach { s -> collisionMap.remove(s) }
-            for (cs in collidingShapes) {
-                longLivedShapes.filter { s -> cs != s && !collisionMap.contains(s) && cs.clip(s) }.forEach { s ->
+            collisionMap.filter { (a, b) -> !b.clipBox(a) }.forEach { (a, _) -> collisionMap.remove(a) }
+            for (b in collidingShapes) {
+                longLivedShapes.filter { a -> b != a && !collisionMap.contains(a) && b.clip(a) }.forEach { a ->
                     if (AppConfig.debug) {
-                        logAsync("Collision! (${cs.name} & ${s.name})", elapsedTime)
+                        logAsync("Collision: ${b.name} -> ${a.name}", elapsedT)
                     }
-                    collisionMap[s] = cs
-                    shortLivedShapes.add(randomExplosion(cs, s, linearTime, gc))
+                    collisionMap[a] = b
+                    shortLivedShapes.add(randomExplosion(b, a, linearT, gc))
                     if (AppConfig.mainAudioEnabled && AppConfig.soundEnabled) {
                         musicLib.explosion.play()
                     }
                 }
             }
 
-            if (linearTime > nextAsteroidTick) {
-                nextAsteroidTick = linearTime + 5000 + fxRandom.nextLong(5000)
-                val asteroid = randomAsteroid(linearTime, gc)
-                shortLivedShapes.add(asteroid)
-                collidingShapes.add(asteroid)
+            if (linearT > nextAsteroidTick) {
+                nextAsteroidTick = linearT + 5000 + fxRandom.nextLong(5000)
+                val a = randomAsteroid(linearT, gc)
+                shortLivedShapes.add(a)
+                collidingShapes.add(a)
             }
 
             // Move BG Canvas slowly for star movement effect
-            val translateId = ((linearTime % 120_000) / (120_000 / bgTransX.size)).toInt()
+            val translateId = ((linearT % 120_000) / (120_000 / bgTransX.size)).toInt()
             bgCanvas.translateX += bgTransX[translateId]
             bgCanvas.translateY += bgTransY[translateId]
 
             loopCount++
-            totalTime += System.currentTimeMillis() - systemTime
-            if (linearTime > nextBigTick) {
+            totalTime += System.currentTimeMillis() - loopStartT
+            if (linearT > nextBigTick) {
                 val averageTime = String.format("%.3f", totalTime.toDouble() / loopCount.toDouble())
                 logAsync(
-                    "Metrics: totalTime=${totalTime}ms, loopCount=$loopCount, averageTime=${averageTime}ms",
-                    elapsedTime
+                    "Metrics: totalTime=${totalTime}ms, loopCount=$loopCount, averageTime=${averageTime}ms", elapsedT
                 )
-                nextBigTick = linearTime + 60_000
+                nextBigTick = linearT + 60_000
             }
 
-            lastLinearTime = linearTime
+            lastLinearT = linearT
         })
 
         gameLoop.keyFrames.add(keyFrame)
@@ -257,8 +257,8 @@ class PlanetsApp : Application() {
 
             override fun location(time: Long, shape: FXShape): Pair<Double, Double> = fx(time, shape) to fy(time, shape)
 
-            override fun running(time: Long, shape: FXShape): Boolean = !(shape.getX() < 0 || shape.getY() < 0 ||
-                    shape.getX() > AppConfig.width || shape.getY() > AppConfig.height)
+            override fun running(time: Long, shape: FXShape): Boolean =
+                !(shape.getX() < 0 || shape.getY() < 0 || shape.getX() > AppConfig.width || shape.getY() > AppConfig.height)
         }
     }
 
@@ -269,12 +269,10 @@ class PlanetsApp : Application() {
 
     private fun randomExplosion(s1: FXShape, s2: FXShape, startTime: Long, gc: GraphicsContext): FXShape {
         val image = if (fxRandom.nextBoolean()) imageLib.explosion1(startTime) else imageLib.explosion2(startTime)
-        return FXShape(
-            "Explosion<${s1.name}, ${s2.name}>", gc, image,
-            object : FXLocator {
-                override fun location(time: Long, shape: FXShape): Pair<Double, Double> =
-                    shape.mapX(s2.getCenterX()) to shape.mapY(s2.getCenterY())
-            })
+        return FXShape("Explosion<${s1.name}, ${s2.name}>", gc, image, object : FXLocator {
+            override fun location(time: Long, shape: FXShape): Pair<Double, Double> =
+                shape.mapX(s2.getCenterX()) to shape.mapY(s2.getCenterY())
+        })
     }
 
     override fun stop() {

@@ -68,7 +68,7 @@ class FXShape(
     }
 
     fun clipCircle(target: FXShape): Boolean =
-        ((x - target.getX()).pow(2) + (y - target.getY()).pow(2)).pow(0.5) < (halfHeight + target.halfHeight)
+        ((x - target.getX()).pow(2) + (y - target.getY()).pow(2)) < (halfHeight + target.halfHeight).pow(2)
 
     fun getX() = x
     fun getY() = y
