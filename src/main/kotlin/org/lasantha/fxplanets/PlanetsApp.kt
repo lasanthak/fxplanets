@@ -55,7 +55,7 @@ class PlanetsApp : Application() {
 
     private var animate = true
     private var loopCount = 0L
-    private var totalTime = 0L
+    private var totalTimeNano = 0L
 
     init {
         gameLoop.cycleCount = Timeline.INDEFINITE
@@ -133,7 +133,7 @@ class PlanetsApp : Application() {
 
         val sunShape = FXShape("Sun", gc, imageLib.sun, object : FXLocator {
             override fun location(time: Long, shape: FXShape): Pair<Double, Double> = centerX to centerY
-        })
+        }, clipW = 40.0, clipH = 40.0)
 
         val earthShape = FXShape("Earth", gc, imageLib.earth, object : FXLocator {
             val r = 320.0
@@ -153,7 +153,7 @@ class PlanetsApp : Application() {
             }
         })
 
-        val shipShape = FXShape("Spaceship", gc, imageLib.ship, object : FXLocator {
+        val planetShape = FXShape("Planet", gc, imageLib.planet, object : FXLocator {
             private val r = 145.0
             private val phase = fxRandom.nextDouble() * 0.0072
             override fun location(time: Long, shape: FXShape): Pair<Double, Double> {
@@ -166,16 +166,16 @@ class PlanetsApp : Application() {
         val collidingShapes = LinkedHashSet<FXShape>()
         val collisionMap = mutableMapOf<FXShape, FXShape>()
 
-        longLivedShapes.addAll(listOf(sunShape, moonShape, earthShape, shipShape))
-        collidingShapes.addAll(listOf(shipShape))
+        longLivedShapes.addAll(listOf(sunShape, moonShape, earthShape, planetShape))
+        collidingShapes.addAll(listOf(planetShape))
 
         var lastLinearT = 0L
         var nextAsteroidTick = 1500L
         var nextBigTick = 3000L
         val gameStartT = System.currentTimeMillis()
         val keyFrame = KeyFrame(Duration.millis(frameDuration.toDouble()), {
-            val loopStartT = System.currentTimeMillis()
-            val elapsedT = loopStartT - gameStartT
+            val loopStartTNano = System.nanoTime()
+            val elapsedT = System.currentTimeMillis() - gameStartT
             val linearT = lastLinearT + frameDuration
 
             longLivedShapes.forEach { it.update(linearT) }
@@ -188,19 +188,23 @@ class PlanetsApp : Application() {
             shortLivedShapes.filterNot { it.drawIfRunning(linearT) }.forEach {
                 shortLivedShapes.remove(it)
                 collidingShapes.remove(it) // remove if present
+                collisionMap.remove(it) // remove if present
                 if (AppConfig.debug) {
                     logAsync("Removed: $it", elapsedT)
                 }
             }
 
-            collisionMap.filter { (a, b) -> !b.clipBox(a) }.forEach { (a, _) -> collisionMap.remove(a) }
-            for (b in collidingShapes) {
-                longLivedShapes.filter { a -> b != a && !collisionMap.contains(a) && b.clip(a) }.forEach { a ->
-                    if (AppConfig.debug) {
-                        logAsync("Collision: ${b.name} -> ${a.name}", elapsedT)
-                    }
+            collisionMap.filter { (a, b) -> !a.clipBox(b) }.forEach { (a, _) -> collisionMap.remove(a) }
+            for (a in collidingShapes) {
+                longLivedShapes.firstOrNull { b -> a != b && !collisionMap.contains(a) && a.clip(b) }?.let { b ->
                     collisionMap[a] = b
-                    shortLivedShapes.add(randomExplosion(b, a, linearT, gc))
+                    shortLivedShapes.add(randomExplosion(a, b, linearT, gc))
+                    if (!longLivedShapes.contains(a)) {
+                        a.stopRunning()
+                    }
+                    if (AppConfig.debug) {
+                        logAsync("Collision: ${a.name} -> ${b.name}", elapsedT)
+                    }
                     if (AppConfig.mainAudioEnabled && AppConfig.soundEnabled) {
                         musicLib.explosion.play()
                     }
@@ -220,13 +224,22 @@ class PlanetsApp : Application() {
             bgCanvas.translateY += bgTransY[translateId]
 
             loopCount++
-            totalTime += System.currentTimeMillis() - loopStartT
+            totalTimeNano += (System.nanoTime() - loopStartTNano)
             if (linearT > nextBigTick) {
-                val averageTime = String.format("%.3f", totalTime.toDouble() / loopCount.toDouble())
-                logAsync(
-                    "Metrics: totalTime=${totalTime}ms, loopCount=$loopCount, averageTime=${averageTime}ms", elapsedT
-                )
                 nextBigTick = linearT + 60_000
+                val totalTMs = totalTimeNano / 1_000_000.0
+                val averageTime = String.format("%.3f", totalTMs / loopCount.toDouble())
+                logAsync(
+                    "Metrics: totalTime=${totalTMs}ms, loopCount=$loopCount, averageTime=${averageTime}ms", elapsedT
+                )
+                if (AppConfig.debug) {
+                    logAsync("longLivedShapes=$longLivedShapes", elapsedT)
+                    logAsync("shortLivedShapes=$shortLivedShapes", elapsedT)
+                    logAsync("collidingShapes=$collidingShapes", elapsedT)
+                    logAsync("collisionMap=$collisionMap", elapsedT)
+                    val totalMemory = Runtime.getRuntime().totalMemory() / 1_000_000L
+                    logAsync("totalMemory=${totalMemory}MB", elapsedT)
+                }
             }
 
             lastLinearT = linearT
@@ -264,7 +277,7 @@ class PlanetsApp : Application() {
 
     private fun randomAsteroid(startTime: Long, gc: GraphicsContext): FXShape {
         val image = imageLib.rocks[fxRandom.nextInt(imageLib.rocks.size)]
-        return FXShape("Asteroid-$startTime", gc, image, asteroidLocator(startTime))
+        return FXShape("UFO-$startTime", gc, image, asteroidLocator(startTime))
     }
 
     private fun randomExplosion(s1: FXShape, s2: FXShape, startTime: Long, gc: GraphicsContext): FXShape {
@@ -304,6 +317,6 @@ class PlanetsApp : Application() {
 lateinit var fxRandom: Random
 
 fun main() {
-    fxRandom = Random(428) // 62439, 234
+    fxRandom = Random(666) // 62439, 234
     Application.launch(PlanetsApp::class.java)
 }

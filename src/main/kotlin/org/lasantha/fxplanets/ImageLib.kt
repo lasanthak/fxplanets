@@ -5,12 +5,8 @@ import javafx.scene.image.WritableImage
 
 class ImageLib {
     val sun = StaticImage(image("sun.png"))
-    val ship = MultiLoopImage(
-        duration = 100, frames = arrayOf(
-            image("ship/s1.png"), image("ship/s2.png"), image("ship/s3.png"),
-            image("ship/s4.png"), image("ship/s5.png"), image("ship/s6.png"),
-        )
-    )
+
+    val planet = StaticImage(image("planet1.png"))
 
     val moon = run {
         val r = image("moon.png").pixelReader
@@ -39,11 +35,17 @@ class ImageLib {
     val rocks = run {
         val r1 = image("rock1.png").pixelReader
         val r2 = image("rock2.png").pixelReader
+        val r3r = Array(48) { image("rock3/$it.png").pixelReader }
+        val blr = Array(60) { image("blob/$it.png").pixelReader }
         listOf(
-            MultiLoopImage(duration = 100, frames = Array(16) { i -> WritableImage(r1, i * 64, 0, 64, 64) }),
-            MultiLoopImage(duration = 100, frames = Array(16) { i -> WritableImage(r1, (15 - i) * 64, 0, 64, 64) }),
-            MultiLoopImage(duration = 100, frames = Array(16) { i -> WritableImage(r2, i * 32, 0, 32, 32) }),
-            MultiLoopImage(duration = 100, frames = Array(16) { i -> WritableImage(r2, (15 - i) * 32, 0, 32, 32) })
+            MultiLoopImage(100, Array(16) { WritableImage(r1, (it * 64) + 11, 11, 40, 40) }),
+            MultiLoopImage(100, Array(16) { WritableImage(r1, (15 - it) * 64 + 11, 11, 40, 40) }),
+            MultiLoopImage(100, Array(16) { WritableImage(r2, it * 32, 0, 32, 32) }),
+            MultiLoopImage(100, Array(16) { WritableImage(r2, (15 - it) * 32, 0, 32, 32) }),
+            MultiLoopImage(70, Array(48) { i -> WritableImage(r3r[i], 2, 2, 36, 36) }),
+            MultiLoopImage(70, Array(48) { i -> WritableImage(r3r[47 - i], 2, 2, 36, 36) }),
+            MultiLoopImage(50, Array(60) { i -> WritableImage(blr[i], 9, 14, 42, 42) }),
+            MultiLoopImage(100, Array(6) { i -> image("ship/s${i + 1}.png") }),
         )
     }
 
