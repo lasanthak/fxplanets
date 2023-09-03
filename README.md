@@ -10,7 +10,8 @@ Animation graphics project using JavaFX and Kotlin
 * Images
   * [FlatIcon](https://www.flaticon.com)
   * [Asteroids](https://github.com/Seif-Sallam/Asteroids/tree/master/Astroids/rsc) by Seif-Sallam.
-  * Earth [Sprite Sheet](https://support.singular.live/hc/en-us/articles/360025546472-Sprite-Sheet).
+  * Earth [sprite sheet](https://support.singular.live/hc/en-us/articles/360025546472-Sprite-Sheet).
+  * [Moon sprite](https://gold356.itch.io/moon-sprite-sheet-32-x-32) by Gold356.
 * Music
   * [Return](https://pixabay.com/music/upbeat-return-120581/) by nojisuma.
   * [Supernatural Explosion](https://pixabay.com/sound-effects/supernatural-explosion-104295/) by Pixabay.

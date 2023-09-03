@@ -5,13 +5,18 @@ import javafx.scene.image.WritableImage
 
 class ImageLib {
     val sun = StaticImage(image("sun.png"))
-    val moon = StaticImage(image("moon.png"))
     val ship = MultiLoopImage(
         duration = 100, frames = arrayOf(
             image("ship/s1.png"), image("ship/s2.png"), image("ship/s3.png"),
             image("ship/s4.png"), image("ship/s5.png"), image("ship/s6.png"),
         )
     )
+
+    val moon = run {
+        val r = image("moon.png").pixelReader
+        MultiLoopImage(duration = 160,
+            frames = Array(19) { i -> WritableImage(r, (i % 4) * 24, (i / 4) * 24, 24, 24) })
+    }
 
     val earth = run {
         val r = image("earth.png").pixelReader

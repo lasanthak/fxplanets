@@ -145,6 +145,7 @@ class PlanetsApp : Application() {
                 return (earthShape.getX() + r * cos(t + phase)) to (earthShape.getY() + r * sin(t + phase) * 1.5)
             }
         })
+
         val shipShape = FXShape("Spaceship", gc, imageLib.ship, object : FXLocator {
             private val r = 145.0
             private val phase = fxRandom.nextDouble() * 0.0072
@@ -153,7 +154,7 @@ class PlanetsApp : Application() {
                 return (centerX + r * cos(t + phase)) to (centerY + r * sin(t + phase) * 1.9)
             }
         })
-        val longLivedShapes = listOf(sunShape, earthShape, moonShape, shipShape)
+        val longLivedShapes = listOf(sunShape, moonShape, earthShape, shipShape)
         val shortLivedShapes = mutableListOf<FXShape>()
         val collidingShapes = mutableListOf(shipShape)
         val collisionMap = mutableMapOf<FXShape, FXShape>()
