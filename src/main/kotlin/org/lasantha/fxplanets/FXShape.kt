@@ -1,53 +1,45 @@
 package org.lasantha.fxplanets
 
 import javafx.scene.canvas.GraphicsContext
+import javafx.scene.image.Image
+import kotlin.math.max
 import kotlin.math.pow
+import kotlin.math.roundToInt
 
 class FXShape(
     val name: String,
     private val gc: GraphicsContext,
-    private val image: ImageWrapper,
-    private val locator: FXLocator,
+    val image: ImageWrapper,
+    val locator: FXLocator,
+    //private val renderer: FXRenderer,
 ) {
     private var running = true
 
-    private var x = 0.0
-    private var y = 0.0
-
-    private var lastX = Double.NaN
-    private var lastY = Double.NaN
-
-    private val halfW = image.width / 2.0
-    private val halfH = image.height / 2.0
 
     fun update(time: Long) {
         if (running(time)) {
-            val (newX, newY) = locator.location(time, this)
-            lastX = x
-            lastY = y
-            x = newX
-            y = newY
+            locator.location(time)
         }
     }
 
     fun clear() {
-        gc.clearRect(lastX, lastY, image.width, image.height)
+        gc.clearRect(locator.getLastX(), locator.getLastY(), image.width, image.height)
     }
 
     fun draw(time: Long) {
-        gc.drawImage(image.frame(time), x, y)
+        gc.drawImage(image.frame(time), locator.getX(), locator.getY())
     }
 
     fun drawIfRunning(time: Long): Boolean {
-        if (running(time)) {
-            gc.drawImage(image.frame(time), x, y)
-            return true
+        val running = running(time)
+        if (running) {
+            gc.drawImage(image.frame(time), locator.getX(), locator.getY())
         }
-        return false
+        return running
     }
 
 
-    fun running(time: Long): Boolean = this.running && image.hasFrame(time) && locator.running(time, this)
+    fun running(time: Long): Boolean = this.running && image.hasFrame(time) && locator.running(time)
 
     fun stopRunning() {
         this.running = false
@@ -56,41 +48,80 @@ class FXShape(
     fun clip(target: FXShape): Boolean = clipBox(target) && clipCircle(target)
 
     fun clipBox(target: FXShape): Boolean {
-        val xClips = if (x < target.getX()) {
-            target.getX() - x < image.width
+        val x = locator.getX()
+        val tx = target.locator.getX()
+        val xClips = if (x < tx) {
+            tx - x < image.width
         } else {
-            x - target.getX() < target.image.width
+            x - tx < target.image.width
         }
 
         if (xClips) {
-            return if (y < target.getY()) {
-                target.getY() - y < image.height
+            val y = locator.getY()
+            val ty = target.locator.getY()
+            return if (y < ty) {
+                ty - y < image.height
             } else {
-                y - target.getY() < target.image.height
+                y - ty < target.image.height
             }
         }
 
         return false
     }
 
-    fun clipCircle(target: FXShape): Boolean =
-        ((x - target.getX()).pow(2) + (y - target.getY()).pow(2)) < (halfH + target.halfH).pow(2)
+    private fun clipCircle(target: FXShape): Boolean {
+        val x = locator.getX()
+        val y = locator.getY()
+        val tx = target.locator.getX()
+        val ty = target.locator.getY()
+        val length = max(image.width, image.height)
+        val targetLength = max(target.image.width, target.image.height)
+        return ((x - tx).pow(2) + (y - ty).pow(2)) < ((length + targetLength) / 2.0).pow(2)
+    }
+
+    override fun toString(): String {
+        val x = locator.getX().roundToInt()
+        val y = locator.getY().roundToInt()
+        return "${javaClass.simpleName}{name=$name, x=$x, y=$y}"
+    }
+}
+
+class FXLocator(
+    private val destroyIfOutOfBounds: Boolean = false,
+    private val fLocation: (time: Long) -> Pair<Double, Double>,
+) {
+    private var x = 0.0
+    private var y = 0.0
+
+    private var lastX = Double.NaN
+    private var lastY = Double.NaN
+
+    fun location(time: Long): Pair<Double, Double> {
+        val newPoint = fLocation(time)
+        lastX = x
+        lastY = y
+        x = newPoint.first
+        y = newPoint.second
+
+        return newPoint
+    }
+
+    fun running(time: Long): Boolean {
+        if (destroyIfOutOfBounds && (x < 0 || y < 0 || x > AppConf.width || y > AppConf.height)) {
+            return false
+        }
+        return true
+    }
 
     fun getX() = x
     fun getY() = y
 
-    fun getCenterX() = x + halfW
-    fun getCenterY() = y + halfH
-
-    fun mapX(centerX: Double) = centerX - halfW
-    fun mapY(centerY: Double) = centerY - halfH
-
-    override fun toString(): String =
-        "${javaClass.simpleName}{name=$name, x=${String.format("%.2f", x)}, y=${String.format("%.2f", y)}}"
+    fun getLastX() = lastX
+    fun getLastY() = lastY
 }
 
-interface FXLocator {
-    fun location(time: Long, shape: FXShape): Pair<Double, Double>
+interface FXRenderer {
 
-    fun running(time: Long, shape: FXShape): Boolean = true
+    fun frame(time: Long, image: ImageWrapper): Image
+    fun running(time: Long, image: ImageWrapper): Boolean = true
 }

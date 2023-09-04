@@ -2,7 +2,7 @@ package org.lasantha.fxplanets
 
 import kotlin.random.Random
 
-class AppConfig {
+class AppConf {
     companion object {
         //60 fps -> frame duration 17 ms
         //50 fps -> frame duration 20 ms
@@ -11,7 +11,8 @@ class AppConfig {
         //25 fps -> frame duration 40 ms
         var fps = 60
 
-        var fxRandom: Random = Random.Default
+        var rand: Random = Random.Default
+        //var rand: Random = Random(13) // 62439, 234
 
         var mainAudioEnabled = false
         var soundEnabled = true

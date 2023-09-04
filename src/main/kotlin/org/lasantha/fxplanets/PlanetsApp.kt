@@ -22,7 +22,6 @@ import kotlinx.coroutines.runBlocking
 import java.util.concurrent.Executors
 import kotlin.math.cos
 import kotlin.math.sin
-import kotlin.random.Random
 
 class PlanetsApp : Application() {
     private val scopeThreads = Executors.newFixedThreadPool(2, GameThreadFactory())
@@ -31,7 +30,7 @@ class PlanetsApp : Application() {
 
     private val imageLib = ImageLib()
     private val musicLib = MusicLib()
-    private val frameDuration = 1000L / AppConfig.fps
+    private val frameDuration = 1000L / AppConf.fps
     private val gameLoop = Timeline()
     private val appStartTime = System.currentTimeMillis()
 
@@ -48,15 +47,15 @@ class PlanetsApp : Application() {
         stage.icons.add(0, imageLib.icon())
         stage.isResizable = false
         val root = StackPane()
-        val scene = Scene(root, AppConfig.width, AppConfig.height, false)
+        val scene = Scene(root, AppConf.width, AppConf.height, false)
         stage.setScene(scene)
-        val bgCanvas = Canvas(AppConfig.width * 1.4, AppConfig.height * 1.4)
-        val staticCanvas = Canvas(AppConfig.width, AppConfig.height)
-        val dynamicCanvas = Canvas(AppConfig.width, AppConfig.height)
+        val bgCanvas = Canvas(AppConf.width * 1.4, AppConf.height * 1.4)
+        val staticCanvas = Canvas(AppConf.width, AppConf.height)
+        val dynamicCanvas = Canvas(AppConf.width, AppConf.height)
         root.children.addAll(bgCanvas, staticCanvas, dynamicCanvas)
 
-        val centerX = AppConfig.width / 2.0
-        val centerY = AppConfig.height / 2.0
+        val centerX = AppConf.width / 2.0
+        val centerY = AppConf.height / 2.0
         val gcBg = bgCanvas.graphicsContext2D
         gcBg.isImageSmoothing = false
         val gcStatic = staticCanvas.graphicsContext2D
@@ -104,7 +103,7 @@ class PlanetsApp : Application() {
         }
 
         scene.setOnKeyPressed { e ->
-            if (AppConfig.debug) {
+            if (AppConf.debug) {
                 logAsync("Key Pressed: ${e.code}")
             }
             when (e.code) {
@@ -113,48 +112,55 @@ class PlanetsApp : Application() {
             }
         }
 
-        val fighterShape = FXShape("Fighter", gc, imageLib.fighter, object : FXLocator {
-            override fun location(time: Long, shape: FXShape): Pair<Double, Double> =
-                centerX - imageLib.fighter.width / 2.0 to AppConfig.height - 100.0
-        })
 
-        val sunShape = FXShape("Sun", gc, imageLib.sun, object : FXLocator {
-            override fun location(time: Long, shape: FXShape): Pair<Double, Double> =
-                centerX - imageLib.sun.width / 2.0 to centerY - imageLib.sun.height / 2.0
-        })
+        val fighterShape = FXShape("Fighter", gc, imageLib.fighter, FXLocator(fLocation = { _ ->
+            centerX - imageLib.fighter.width / 2.0 to AppConf.height - 100.0
+        }))
 
-        val earthShape = FXShape("Earth", gc, imageLib.earth, object : FXLocator {
+        val sunShape = FXShape("Sun", gc, imageLib.sun, FXLocator(fLocation = { _ ->
+            centerX - imageLib.sun.width / 2.0 to centerY - imageLib.sun.height / 2.0
+        }))
+
+        fun earthLocator(): FXLocator {
             val r = 320.0
-            val phase = AppConfig.fxRandom.nextDouble() * 7.2
-            override fun location(time: Long, shape: FXShape): Pair<Double, Double> {
+            val phase = AppConf.rand.nextDouble() * 7.2
+            return FXLocator(fLocation = { time ->
                 val t = time * 0.00073
-                return (centerX + r * cos(t + phase) * 1.5) to (centerY + r * sin(t + phase))
-            }
-        })
+                (centerX + r * cos(t + phase) * 1.5) to (centerY + r * sin(t + phase))
+            })
+        }
 
-        val moonShape = FXShape("Moon", gc, imageLib.moon, object : FXLocator {
-            private val r = 45.0
-            private val phase = AppConfig.fxRandom.nextDouble() * 7.2
-            override fun location(time: Long, shape: FXShape): Pair<Double, Double> {
+        val earthLoc = earthLocator()
+        val earthShape = FXShape("Earth", gc, imageLib.earth, earthLoc)
+
+        fun moonLocator(): FXLocator {
+            val r = 45.0
+            val phase = AppConf.rand.nextDouble() * 7.2
+            return FXLocator(fLocation = { time ->
                 val t = time * 0.00377
-                return (earthShape.getX() + r * cos(t + phase)) to (earthShape.getY() + r * sin(t + phase) * 1.5)
-            }
-        })
+                (earthLoc.getX() + r * cos(t + phase)) to (earthLoc.getY() + r * sin(t + phase) * 1.5)
+            })
+        }
 
-        val planetShape = FXShape("Planet", gc, imageLib.planet, object : FXLocator {
-            private val r = 145.0
-            private val phase = AppConfig.fxRandom.nextDouble() * 0.0072
-            override fun location(time: Long, shape: FXShape): Pair<Double, Double> {
+        val moonShape = FXShape("Moon", gc, imageLib.moon, moonLocator())
+
+        fun planetLocator(): FXLocator {
+            val r = 145.0
+            val phase = AppConf.rand.nextDouble() * 0.0072
+            return FXLocator(fLocation = { time ->
                 val t = time * -0.0011
-                return (centerX + r * cos(t + phase)) to (centerY + r * sin(t + phase) * 1.9)
-            }
-        })
+                (centerX + r * cos(t + phase)) to (centerY + r * sin(t + phase) * 1.9)
+            })
+        }
+
+        val planetShape = FXShape("Planet", gc, imageLib.planet, planetLocator())
+
         val longLivedShapes = LinkedHashSet<FXShape>()
         val shortLivedShapes = LinkedHashSet<FXShape>()
         val collidingShapes = LinkedHashSet<FXShape>()
         val collisionMap = mutableMapOf<FXShape, FXShape>()
 
-        longLivedShapes.addAll(listOf(sunShape, moonShape, earthShape, planetShape))
+        longLivedShapes.addAll(listOf(sunShape, earthShape, moonShape, planetShape))
         shortLivedShapes.addAll(listOf(fighterShape))
         collidingShapes.addAll(listOf(planetShape, fighterShape))
 
@@ -178,7 +184,7 @@ class PlanetsApp : Application() {
                 shortLivedShapes.remove(it)
                 collidingShapes.remove(it) // remove if present
                 collisionMap.remove(it) // remove if present
-                if (AppConfig.debug) {
+                if (AppConf.debug) {
                     logAsync("Removed: $it", elapsedT)
                 }
             }
@@ -191,17 +197,17 @@ class PlanetsApp : Application() {
                     if (!longLivedShapes.contains(a)) {
                         a.stopRunning()
                     }
-                    if (AppConfig.debug) {
+                    if (AppConf.debug) {
                         logAsync("Collision: ${a.name} -> ${b.name}", elapsedT)
                     }
-                    if (AppConfig.mainAudioEnabled && AppConfig.soundEnabled) {
+                    if (AppConf.mainAudioEnabled && AppConf.soundEnabled) {
                         musicLib.explosion.play()
                     }
                 }
             }
 
             if (linearT > nextAsteroidTick) {
-                nextAsteroidTick = linearT + 5000 + AppConfig.fxRandom.nextLong(5000)
+                nextAsteroidTick = linearT + 5000 + AppConf.rand.nextLong(5000)
                 val a = randomAsteroid(linearT, gc)
                 shortLivedShapes.add(a)
                 collidingShapes.add(a)
@@ -221,7 +227,7 @@ class PlanetsApp : Application() {
                 logAsync(
                     "Metrics: totalTime=${totalTMs}ms, loopCount=$loopCount, averageTime=${averageTime}ms", elapsedT
                 )
-                if (AppConfig.debug) {
+                if (AppConf.debug) {
                     logAsync("longLivedShapes=$longLivedShapes", elapsedT)
                     logAsync("shortLivedShapes=$shortLivedShapes", elapsedT)
                     logAsync("collidingShapes=$collidingShapes", elapsedT)
@@ -242,40 +248,39 @@ class PlanetsApp : Application() {
     }
 
     private fun asteroidLocator(startTime: Long): FXLocator {
-        fun locFun(maxLen: Double, forward: Boolean, add: Boolean): (time: Long, shape: FXShape) -> Double {
-            val v = 0.05 + 0.1 * AppConfig.fxRandom.nextDouble()
-            val c = if (add) (maxLen * 0.8 * AppConfig.fxRandom.nextDouble()) else 0.0
+        fun locFun(maxLen: Double, forward: Boolean, add: Boolean): (time: Long) -> Double {
+            val v = 0.05 + 0.1 * AppConf.rand.nextDouble()
+            val c = if (add) (maxLen * 0.8 * AppConf.rand.nextDouble()) else 0.0
             return if (forward) {
-                { time, _ -> c + v * (time - startTime) }
+                { time -> c + v * (time - startTime) }
             } else {
-                { time, _ -> maxLen - c - (v * (time - startTime)) }
+                { time -> maxLen - c - (v * (time - startTime)) }
             }
         }
 
-        val addC = AppConfig.fxRandom.nextBoolean()
-        return object : FXLocator {
-            private val fx = locFun(AppConfig.width, AppConfig.fxRandom.nextBoolean(), addC)
-            private val fy = locFun(AppConfig.height, AppConfig.fxRandom.nextBoolean(), !addC)
+        val addC = AppConf.rand.nextBoolean()
 
-            override fun location(time: Long, shape: FXShape): Pair<Double, Double> = fx(time, shape) to fy(time, shape)
+        val fx = locFun(AppConf.width, AppConf.rand.nextBoolean(), addC)
+        val fy = locFun(AppConf.height, AppConf.rand.nextBoolean(), !addC)
 
-            override fun running(time: Long, shape: FXShape): Boolean =
-                !(shape.getX() < 0 || shape.getY() < 0 || shape.getX() > AppConfig.width || shape.getY() > AppConfig.height)
-        }
+        return FXLocator(destroyIfOutOfBounds = true, fLocation = { time -> fx(time) to fy(time) })
     }
 
     private fun randomAsteroid(startTime: Long, gc: GraphicsContext): FXShape {
-        val image = imageLib.rocks[AppConfig.fxRandom.nextInt(imageLib.rocks.size)]
+        val image = imageLib.rocks[AppConf.rand.nextInt(imageLib.rocks.size)]
         return FXShape("UFO-$startTime", gc, image, asteroidLocator(startTime))
     }
 
     private fun randomExplosion(s1: FXShape, s2: FXShape, startTime: Long, gc: GraphicsContext): FXShape {
-        val image = if (AppConfig.fxRandom.nextBoolean()) imageLib.explosion1(startTime)
+        val img = if (AppConf.rand.nextBoolean()) imageLib.explosion1(startTime)
         else imageLib.explosion2(startTime)
-        return FXShape("Explosion<${s1.name}, ${s2.name}>", gc, image, object : FXLocator {
-            override fun location(time: Long, shape: FXShape): Pair<Double, Double> =
-                shape.mapX(s2.getCenterX()) to shape.mapY(s2.getCenterY())
-        })
+
+        val gapW = s2.image.halfW() - img.halfW()
+        val gapH = s2.image.halfH() - img.halfH()
+        return FXShape(
+            "Explosion<${s1.name}, ${s2.name}>", gc, img,
+            FXLocator(fLocation = { _ -> (s2.locator.getX() + gapW) to (s2.locator.getY() + gapH) })
+        )
     }
 
     override fun stop() {
@@ -305,8 +310,6 @@ class PlanetsApp : Application() {
 }
 
 
-
 fun main() {
-    AppConfig.fxRandom = Random(666) // 62439, 234
     Application.launch(PlanetsApp::class.java)
 }

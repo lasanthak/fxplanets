@@ -11,13 +11,13 @@ class MusicLib {
     val explosion = createAudioClip("music/explosion.mp3")
 
     fun playMusic() {
-        if (AppConfig.mainAudioEnabled && AppConfig.musicEnabled) {
+        if (AppConf.mainAudioEnabled && AppConf.musicEnabled) {
             bgMusicPlayer.play()
         }
     }
 
     fun pauseMusic() {
-        if (AppConfig.mainAudioEnabled && AppConfig.musicEnabled) {
+        if (AppConf.mainAudioEnabled && AppConf.musicEnabled) {
             bgMusicPlayer.pause()
         }
     }

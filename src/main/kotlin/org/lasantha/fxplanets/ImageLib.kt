@@ -55,7 +55,7 @@ class ImageLib {
             MultiLoopImage(50, Array(60) { WritableImage(r4r[it], 1, 1, 38, 38) }),
             MultiLoopImage(50, Array(60) { WritableImage(blr[it], 9, 14, 42, 42) }),
             MultiLoopImage(100, Array(6) { WritableImage(shr[it], 0, 5, 39, 28) }),
-        ).shuffled(AppConfig.fxRandom)
+        ).shuffled(AppConf.rand)
     }
 
     fun bgImage(): Image = image("space.png")
@@ -68,6 +68,10 @@ class ImageLib {
 sealed interface ImageWrapper {
     val width: Double
     val height: Double
+
+    fun halfW(): Double = width / 2.0
+    fun halfH(): Double = height / 2.0
+
     fun hasFrame(time: Long): Boolean = true
     fun frame(time: Long): Image
 }
@@ -75,6 +79,7 @@ sealed interface ImageWrapper {
 class StaticImage(private val image: Image) : ImageWrapper {
     override val width = image.width
     override val height = image.height
+
     override fun frame(time: Long) = image
 }
 
