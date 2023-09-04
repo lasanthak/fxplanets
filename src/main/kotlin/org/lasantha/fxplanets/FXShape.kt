@@ -8,7 +8,6 @@ import kotlin.math.roundToInt
 
 class FXShape(
     val name: String,
-    private val gc: GraphicsContext,
     val image: ImageWrapper,
     val locator: FXLocator,
     //private val renderer: FXRenderer,
@@ -22,15 +21,15 @@ class FXShape(
         }
     }
 
-    fun clear() {
+    fun clear(gc: GraphicsContext) {
         gc.clearRect(locator.getLastX(), locator.getLastY(), image.width, image.height)
     }
 
-    fun draw(time: Long) {
+    fun draw(gc: GraphicsContext, time: Long) {
         gc.drawImage(image.frame(time), locator.getX(), locator.getY())
     }
 
-    fun drawIfRunning(time: Long): Boolean {
+    fun drawIfRunning(gc: GraphicsContext, time: Long): Boolean {
         val running = running(time)
         if (running) {
             gc.drawImage(image.frame(time), locator.getX(), locator.getY())
