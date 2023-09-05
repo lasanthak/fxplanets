@@ -1,7 +1,7 @@
 package org.lasantha.fxplanets
 
 import javafx.scene.canvas.GraphicsContext
-import javafx.scene.image.Image
+import org.lasantha.fxplanets.service.ImageWrapper
 import kotlin.math.max
 import kotlin.math.pow
 import kotlin.math.roundToInt
@@ -10,7 +10,6 @@ class FXShape(
     val name: String,
     val image: ImageWrapper,
     val locator: FXLocator,
-    //private val renderer: FXRenderer,
 ) {
     private var running = true
 
@@ -117,10 +116,4 @@ class FXLocator(
 
     fun getLastX() = lastX
     fun getLastY() = lastY
-}
-
-interface FXRenderer {
-
-    fun frame(time: Long, image: ImageWrapper): Image
-    fun running(time: Long, image: ImageWrapper): Boolean = true
 }

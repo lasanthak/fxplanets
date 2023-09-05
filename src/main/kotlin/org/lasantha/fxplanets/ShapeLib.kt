@@ -1,5 +1,6 @@
 package org.lasantha.fxplanets
 
+import org.lasantha.fxplanets.service.ImageService
 import kotlin.math.cos
 import kotlin.math.sin
 
@@ -7,15 +8,14 @@ class ShapeLib {
     private val centerX = AppConf.width / 2.0
     private val centerY = AppConf.height / 2.0
 
-    val imageLib = ImageLib()
+    val imageLib = ImageService()
 
-    val fighterShape = FXShape("Fighter", imageLib.fighter, FXLocator(fLocation = { _ ->
-        centerX - imageLib.fighter.width / 2.0 to AppConf.height - 100.0
-    }))
+    private fun sunLocator(): FXLocator {
+        val point = (centerX - imageLib.sun.halfW()) to (centerY - imageLib.sun.halfH())
+        return FXLocator(fLocation = { _ -> point })
+    }
 
-    val sunShape = FXShape("Sun", imageLib.sun, FXLocator(fLocation = { _ ->
-        centerX - imageLib.sun.width / 2.0 to centerY - imageLib.sun.height / 2.0
-    }))
+    val sunShape = FXShape("Sun", imageLib.sun, sunLocator())
 
     private fun earthLocator(): FXLocator {
         val r = 320.0
@@ -85,5 +85,11 @@ class ShapeLib {
             "Explosion<${a.name}, ${b.name}>", img,
             FXLocator(fLocation = { _ -> (b.locator.getX() + gapW) to (b.locator.getY() + gapH) })
         )
+    }
+
+    fun fighterShape(): FXShape {
+        val point = (centerX - imageLib.fighter.halfW()) to (AppConf.height - 100.0)
+        val locator = FXLocator(fLocation = { _ -> point })
+        return FXShape("Fighter", imageLib.fighter, locator)
     }
 }

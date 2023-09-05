@@ -29,14 +29,16 @@ class PlanetsApp : Application() {
     private val musicLib = MusicLib()
     private val frameDuration = 1000L / AppConf.fps
     private val gameLoop = Timeline()
-    private val appStartTime = System.currentTimeMillis()
 
+    private var fighter: FXShape
     private var animate = true
     private var loopCount = 0L
     private var totalTimeNano = 0L
 
+    private val appStartTime = System.currentTimeMillis()
     init {
         gameLoop.cycleCount = Timeline.INDEFINITE
+        fighter = shapeLib.fighterShape()
     }
 
     override fun start(stage: Stage) {
@@ -113,8 +115,8 @@ class PlanetsApp : Application() {
         val collisionMap = mutableMapOf<FXShape, FXShape>()
 
         longLivedShapes.addAll(listOf(shapeLib.sunShape, shapeLib.earthShape, shapeLib.moonShape, shapeLib.planetShape))
-        shortLivedShapes.addAll(listOf(shapeLib.fighterShape))
-        collidingShapes.addAll(listOf(shapeLib.planetShape, shapeLib.fighterShape))
+        shortLivedShapes.addAll(listOf(fighter))
+        collidingShapes.addAll(listOf(shapeLib.planetShape, fighter))
 
         var lastLinearT = 0L
         var nextAsteroidTick = 1500L
