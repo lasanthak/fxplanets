@@ -1,13 +1,14 @@
-package org.lasantha.fxplanets.service
+package org.lasantha.fxplanets.view
 
 import javafx.scene.image.Image
 import javafx.scene.image.WritableImage
 import org.lasantha.fxplanets.model.Presentation
+import org.lasantha.fxplanets.service.PresentationService
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
 
-class ImageService(private val service: PresentationService) {
+class ImageLib(private val service: PresentationService) {
     private val imageMap: Map<Presentation, ImageWrapper>
     private val exp1Frames: Array<Image>
     private val exp2Frames: Array<Image>
@@ -94,7 +95,7 @@ class ImageService(private val service: PresentationService) {
     fun icon(): Image = image("galaxy.png")
 
     private fun image(name: String): Image =
-        Image(ImageService::class.java.getResourceAsStream("img/$name"), 0.0, 0.0, true, true)
+        Image(ImageLib::class.java.getResourceAsStream("img/$name"), 0.0, 0.0, true, true)
 }
 
 sealed interface ImageWrapper {

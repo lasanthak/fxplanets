@@ -1,7 +1,7 @@
-package org.lasantha.fxplanets
+package org.lasantha.fxplanets.view
 
 import javafx.scene.canvas.GraphicsContext
-import org.lasantha.fxplanets.service.ImageWrapper
+import org.lasantha.fxplanets.AppConf
 import kotlin.math.max
 import kotlin.math.pow
 import kotlin.math.roundToInt

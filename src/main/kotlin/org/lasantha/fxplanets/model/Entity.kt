@@ -4,41 +4,30 @@ import kotlin.math.max
 import kotlin.math.pow
 import kotlin.math.roundToInt
 
-enum class EntityCategory { PLANETARY, UFO, USER, MISC }
-enum class EntityType(val category: EntityCategory) {
-    STAR(EntityCategory.PLANETARY), PLANET(EntityCategory.PLANETARY), MOON(EntityCategory.PLANETARY),
-    ASTEROID(EntityCategory.UFO), ALIENSHIP(EntityCategory.UFO), SPACEBLOB(EntityCategory.UFO),
-    EXPLOSION(EntityCategory.MISC),
-    FIGHTER(EntityCategory.USER);
-
-    fun ephemeral(): Boolean = when (category) {
-        EntityCategory.UFO, EntityCategory.USER, EntityCategory.MISC -> true
-        EntityCategory.PLANETARY -> false
-    }
-
+enum class EntityCategory(val ephemeral: Boolean = true) {
+    PLANETARY(false),
+    UFO, USER, MISC;
 }
 
+
 class Entity(
-    val name: String, val type: EntityType,
-    val presentation: Presentation,
+    val name: String, val category: EntityCategory, val presentation: Presentation,
     private val game: Game, private val inactiveIfOutOfBounds: Boolean = false
 ) {
 
-    private var active = true
-        get
-        set
+    var active = true
 
-    private var x = 0.0
-        get
+    var x = 0.0
+        private set
 
-    private var y = 0.0
-        get
+    var y = 0.0
+        private set
 
-    private var lastX = Double.NaN
-        get
+    var lastX = Double.NaN
+        private set
 
-    private var lastY = Double.NaN
-        get
+    var lastY = Double.NaN
+        private set
 
     fun update(location: Pair<Double, Double>) {
         lastX = x
@@ -78,7 +67,7 @@ class Entity(
     }
 
     override fun toString(): String {
-        return "${javaClass.simpleName}{name=$name, type=${type.name}, x=${x.roundToInt()}, y=${y.roundToInt()}, " +
+        return "${javaClass.simpleName}{name=$name, category=${category.name}, x=${x.roundToInt()}, y=${y.roundToInt()}, " +
                 "presentation=$presentation}"
     }
 }

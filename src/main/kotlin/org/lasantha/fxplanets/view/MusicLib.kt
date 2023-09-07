@@ -1,8 +1,9 @@
-package org.lasantha.fxplanets
+package org.lasantha.fxplanets.view
 
 import javafx.scene.media.AudioClip
 import javafx.scene.media.Media
 import javafx.scene.media.MediaPlayer
+import org.lasantha.fxplanets.AppConf
 
 class MusicLib {
 

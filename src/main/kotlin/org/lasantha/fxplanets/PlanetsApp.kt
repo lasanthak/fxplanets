@@ -18,6 +18,11 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import org.lasantha.fxplanets.service.GameService
+import org.lasantha.fxplanets.service.PresentationService
+import org.lasantha.fxplanets.view.FXShape
+import org.lasantha.fxplanets.view.MusicLib
+import org.lasantha.fxplanets.view.RenderService
 import java.util.concurrent.Executors
 
 class PlanetsApp : Application() {
@@ -25,12 +30,14 @@ class PlanetsApp : Application() {
     private val scopeJobs = Job()
     private val gameScope = CoroutineScope(scopeThreads.asCoroutineDispatcher() + scopeJobs)
 
-    private val shapeLib = ShapeLib()
     private val musicLib = MusicLib()
     private val frameDuration = 1000L / AppConf.fps
     private val gameLoop = Timeline()
 
-    private var fighter: FXShape
+    val prService = PresentationService()
+    val gameService = GameService(prService = prService)
+    lateinit var renderService: RenderService
+
     private var animate = true
     private var loopCount = 0L
     private var totalTimeNano = 0L
@@ -38,12 +45,10 @@ class PlanetsApp : Application() {
     private val appStartTime = System.currentTimeMillis()
     init {
         gameLoop.cycleCount = Timeline.INDEFINITE
-        fighter = shapeLib.fighterShape()
     }
 
     override fun start(stage: Stage) {
         stage.title = "Planets & Asteroids"
-        stage.icons.add(0, shapeLib.imageLib.icon())
         stage.isResizable = false
         val root = StackPane()
         val scene = Scene(root, AppConf.width, AppConf.height, false)
@@ -60,8 +65,11 @@ class PlanetsApp : Application() {
         val gc = dynamicCanvas.graphicsContext2D
         gc.isImageSmoothing = false
 
+        renderService = RenderService(prService = prService, gameService = gameService, gc = gc)
+
+        stage.icons.add(0, renderService.imageLib.icon())
         root.style = "-fx-background-color:black"
-        gcBg.drawImage(shapeLib.imageLib.bgImage(), 0.0, 0.0)
+        gcBg.drawImage(renderService.imageLib.bgImage(), 0.0, 0.0)
         val bgTransX = arrayOf(-0.12, -0.06, 0.06, 0.12, 0.06, -0.06, -0.12, -0.06, 0.06, 0.12, 0.06, -0.06)
         val bgTransY = arrayOf(-0.12, -0.06, -0.12, -0.06, 0.06, 0.12, 0.06, -0.06, 0.06, 0.12, 0.06, -0.06)
         for (i in bgTransX.indices) {
