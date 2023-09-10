@@ -63,7 +63,8 @@ class Entity(
     private fun clipCircle(other: Entity): Boolean {
         val len = max(presentation.width, presentation.height)
         val otherLen = max(other.presentation.width, other.presentation.height)
-        return ((x - other.x).pow(2) + (y - other.y).pow(2)) < ((len + otherLen) / 2.0).pow(2)
+        return ((x + presentation.width.div(2) - other.x - other.presentation.width.div(2)).pow(2) +
+                (y + presentation.height.div(2) - other.y - other.presentation.height.div(2)).pow(2)) < ((len + otherLen) / 2.0).pow(2)
     }
 
     override fun toString(): String {

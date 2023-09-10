@@ -2,7 +2,6 @@ package org.lasantha.fxplanets.model
 
 import kotlin.math.PI
 import kotlin.math.cos
-import kotlin.math.min
 import kotlin.math.sin
 
 sealed interface Path {
@@ -11,6 +10,12 @@ sealed interface Path {
      */
     fun location(time: Long): Pair<Double, Double>
 
+}
+
+sealed interface ControlPath : Path {
+    enum class Direction { LEFT, RIGHT, UP, DOWN }
+
+    fun setDeltaStopTime(time: Long, direction: Direction)
 }
 
 /**
@@ -75,20 +80,44 @@ class LinearPath(
  * @param startX - x coordinate of the starting point
  * @param startY - y coordinate of the starting point
  */
-class ControlPath(private val startX: Double, private val startY: Double, private val entity: Entity) : Path {
+class LRControlPath(startX: Double, startY: Double, entity: Entity, val spaceDelta: Double, val timeDelta: Long) : ControlPath {
     private var x = startX
     private var y = startY
+    private var direction = ControlPath.Direction.LEFT
+    private var deltaStopTime = -1L
 
-    private val maxX = entity.game.width - entity.presentation.width - 5.0
     private val minX = 5.0
+    private val maxX = entity.game.width - entity.presentation.width - 5.0
+    private val minY = startY - 200.0
+    private val maxY = entity.game.height - entity.presentation.height - 5.0
 
-    override fun location(time: Long): Pair<Double, Double> = x to y
-
-    fun addX(delta: Double) {
-        val newX = x  + delta
-        if (newX > minX && newX < maxX) {
-            x += delta
+    override fun location(time: Long): Pair<Double, Double> {
+        if (time < deltaStopTime) {
+            val (newX, newY) = when (direction) {
+                ControlPath.Direction.LEFT -> x - spaceDelta to y
+                ControlPath.Direction.RIGHT -> x + spaceDelta to y
+                ControlPath.Direction.UP -> x to y - spaceDelta
+                ControlPath.Direction.DOWN -> x to y + spaceDelta
+            }
+            if (newX > minX && newX < maxX) {
+                x = newX
+            }
+            if (newY > minY && newY < maxY) {
+                y = newY
+            }
         }
-        println("newX = $newX")
+        return x to y
     }
+
+    override fun setDeltaStopTime(time: Long, direction: ControlPath.Direction) {
+        deltaStopTime = time + timeDelta
+        this.direction = direction
+    }
+}
+
+
+object NoOpControlPath : ControlPath {
+    override fun location(time: Long): Pair<Double, Double> = -1.0 to -1.0
+
+    override fun setDeltaStopTime(time: Long, direction: ControlPath.Direction) {}
 }

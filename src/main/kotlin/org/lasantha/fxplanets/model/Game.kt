@@ -1,5 +1,6 @@
 package org.lasantha.fxplanets.model
 
+import kotlin.math.roundToLong
 import kotlin.random.Random
 
 
@@ -11,7 +12,8 @@ class Game(val width: Double, val height: Double) {
     //40 fps -> frame duration 25 ms
     //33 fps -> frame duration 30 ms
     //25 fps -> frame duration 40 ms
-    var fps = 60
+    val fps = 60
+    val tick = (1000.0 / fps.toDouble()).roundToLong()
 
     val maxLives = 5
     var live = 1
@@ -21,4 +23,6 @@ class Game(val width: Double, val height: Double) {
     var musicEnabled = true
 
     var debug = true
+
+    fun lost(): Boolean = (live >= maxLives)
 }

@@ -1,6 +1,15 @@
 package org.lasantha.fxplanets.service
 
-import org.lasantha.fxplanets.model.*
+import org.lasantha.fxplanets.model.EllipticalPath
+import org.lasantha.fxplanets.model.Entity
+import org.lasantha.fxplanets.model.EntityCategory
+import org.lasantha.fxplanets.model.Game
+import org.lasantha.fxplanets.model.LRControlPath
+import org.lasantha.fxplanets.model.LinearPath
+import org.lasantha.fxplanets.model.Path
+import org.lasantha.fxplanets.model.PiggyBackPath
+import org.lasantha.fxplanets.model.PresentationType
+import org.lasantha.fxplanets.model.StationaryPath
 
 class EntityService(val game: Game, val prLib: PresentationLib) {
     private val centerX = game.width / 2.0
@@ -31,7 +40,13 @@ class EntityService(val game: Game, val prLib: PresentationLib) {
 
     fun ufo(time: Long): Entity {
         val p = ufoPresentations[game.rand.nextInt(ufoPresentations.size)]
-        return Entity("UFO-$time", EntityCategory.UFO, p, game, inactiveIfOutOfBounds = true)
+        val prefix = when (p.type) {
+            PresentationType.ASTEROID -> "Asteroid"
+            PresentationType.ALIENSHIP -> "AlienShip"
+            PresentationType.SPACEBLOB -> "SpaceBlob"
+            else -> "UFO"
+        }
+        return Entity("$prefix-$time", EntityCategory.UFO, p, game, inactiveIfOutOfBounds = true)
     }
 
     fun ufoPath(time: Long): Path {
@@ -67,6 +82,9 @@ class EntityService(val game: Game, val prLib: PresentationLib) {
         Entity("Fighter-${game.live}", EntityCategory.USER, prLib.fighter, game, inactiveIfOutOfBounds = true)
 
     fun fighterPath(entity: Entity) =
-        ControlPath(startX = centerX - entity.presentation.width / 2.0, startY = game.height - 200.0, entity)
+        LRControlPath(
+            startX = centerX - entity.presentation.width / 2.0, startY = game.height - 200.0,
+            entity = entity, spaceDelta = 10.0, timeDelta = 240L
+        )
 
 }

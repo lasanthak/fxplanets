@@ -10,7 +10,14 @@ import javafx.scene.input.MouseButton
 import javafx.scene.layout.StackPane
 import javafx.stage.Stage
 import javafx.util.Duration
-import kotlinx.coroutines.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.asCoroutineDispatcher
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import org.lasantha.fxplanets.controller.GameController
 import org.lasantha.fxplanets.model.Game
 import org.lasantha.fxplanets.service.EntityService
@@ -27,7 +34,7 @@ class PlanetsApp : Application() {
     private val musicLib = MusicLib()
     private val imageLib = ImageLib(prLib)
     private val context = Context(prLib, musicLib, imageLib)
-    private val frameDuration = 1000L / context.game.fps
+    private val frameDuration = context.game.tick
     private val gameLoop = Timeline()
 
     private var animate = true
@@ -101,10 +108,8 @@ class PlanetsApp : Application() {
         }
 
         scene.setOnKeyPressed { e ->
-            when (e.code) {
-                KeyCode.ESCAPE -> stage.close()
-                else -> {}
-            }
+            if (e.code == KeyCode.ESCAPE) stage.close()
+
             context.controller.handleKeyPress(linearT, e.code)
         }
 

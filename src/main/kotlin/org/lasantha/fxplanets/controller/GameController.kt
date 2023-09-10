@@ -2,7 +2,11 @@ package org.lasantha.fxplanets.controller
 
 import javafx.scene.canvas.GraphicsContext
 import javafx.scene.input.KeyCode
-import org.lasantha.fxplanets.model.*
+import org.lasantha.fxplanets.model.ControlPath
+import org.lasantha.fxplanets.model.Entity
+import org.lasantha.fxplanets.model.EntityCategory
+import org.lasantha.fxplanets.model.Path
+import org.lasantha.fxplanets.model.PresentationType
 import org.lasantha.fxplanets.service.EntityService
 import org.lasantha.fxplanets.view.ImageLib
 import org.lasantha.fxplanets.view.MusicLib
@@ -11,15 +15,14 @@ class GameController(private val imageLib: ImageLib, private val musicLib: Music
     private lateinit var gc: GraphicsContext
 
     private val shapes = LinkedHashSet<Shape>()
-    private val longLivedShapes = LinkedHashSet<Shape>()
-    private val shortLivedShapes = LinkedHashSet<Shape>()
+    private val protectedShapes = LinkedHashSet<Shape>()
     private val collidingShapes = LinkedHashSet<Shape>()
     private val collisionMap = mutableMapOf<Shape, Shape>()
 
+    private var fighter: ControlShape
     private var nextFighterTick = Long.MAX_VALUE
     private var nextUFOTick = 1500L
 
-    private lateinit var flightControlPath: ControlPath
 
     init {
         val sunEntity = entityService.sun()
@@ -29,9 +32,10 @@ class GameController(private val imageLib: ImageLib, private val musicLib: Music
         createAddShape(earthEntity, entityService.earthPath(sunEntity))
         createAddShape(entityService.moon(), entityService.moonPath(earthEntity))
 
-        val fighterEntity = entityService.fighter()
-        flightControlPath = entityService.fighterPath(fighterEntity)
-        createAddShape(fighterEntity, flightControlPath)
+        val fe = entityService.fighter()
+        val cs = ControlShape(fe, entityService.fighterPath(fe), imageLib.getImage(fe.presentation))
+        addShape(cs)
+        fighter = cs
     }
 
     fun initGC(gc: GraphicsContext) {
@@ -62,21 +66,18 @@ class GameController(private val imageLib: ImageLib, private val musicLib: Music
         // Make collisions
         collisionMap.filter { (a, b) -> !a.entity.clipBox(b.entity) }.forEach { (a, _) -> collisionMap.remove(a) }
         for (a in collidingShapes) {
-            longLivedShapes.firstOrNull { b -> b != a && !collisionMap.contains(a) && a.entity.clip(b.entity) }
+            protectedShapes.firstOrNull { b -> b != a && !collisionMap.contains(a) && a.entity.clip(b.entity) }
                 ?.let { b ->
                     collisionMap[a] = b
-                    if (a.entity.category.ephemeral) {
-                        a.entity.active = false
-                    }
-                    if (a.entity.presentation.type == PresentationType.FIGHTER && handleFighterKilled(time)) {
-                        nextFighterTick = time + 3000
-                    }
-                    val entity = entityService.explosion(time, a.entity, b.entity)
-                    val path = entityService.explosionPath(time, entity, b.entity)
-                    val image = imageLib.newImage(entity.presentation, time)
-                    shapesToAdd.add(Shape(entity, path, image))
+                    if (a.entity.category.ephemeral) a.entity.active = false
+                    if (b.entity.category.ephemeral) b.entity.active = false
+                    if (a == fighter || b == fighter) updateWinStatus(time)
+
+                    val e = entityService.explosion(time, a.entity, b.entity)
+                    shapesToAdd.add(Shape(e, entityService.explosionPath(time, e, b.entity), imageLib.newImage(e.presentation, time)))
+
                     if (game.debug) {
-                        println("Collision: ${a.entity.name} -> ${b.entity.name}" + time)
+                        println("[$time] Collision: ${a.entity.name} -> ${b.entity.name}")
                     }
                     if (game.mainAudioEnabled && game.soundEnabled) {
                         musicLib.explosion.play()
@@ -87,19 +88,17 @@ class GameController(private val imageLib: ImageLib, private val musicLib: Music
         // Generate UFOs
         if (time > nextUFOTick) {
             nextUFOTick = time + 5000 + game.rand.nextLong(5000)
-            val entity = entityService.ufo(time)
-            val path = entityService.ufoPath(time)
-            val image = imageLib.getImage(entity.presentation)
-            shapesToAdd.add(Shape(entity, path, image))
+            val e = entityService.ufo(time)
+            shapesToAdd.add(Shape(e, entityService.ufoPath(time), imageLib.getImage(e.presentation)))
         }
 
         // New fighter
         if (nextFighterTick <= time) {
             nextFighterTick = Long.MAX_VALUE
-            val fighterEntity = entityService.fighter()
-            flightControlPath = entityService.fighterPath(fighterEntity)
-            val fighterImage = imageLib.getImage(fighterEntity.presentation)
-            shapesToAdd.add(Shape(fighterEntity, flightControlPath, fighterImage))
+            val fe = entityService.fighter()
+            val cs = ControlShape(fe, entityService.fighterPath(fe), imageLib.getImage(fe.presentation))
+            shapesToAdd.add(cs)
+            fighter = cs
         }
 
         for (s in shapesToAdd) {
@@ -117,44 +116,40 @@ class GameController(private val imageLib: ImageLib, private val musicLib: Music
     }
 
     private fun createAddShape(entity: Entity, path: Path): Shape {
-        val image = imageLib.getImage(entity.presentation)
-        return addShape(Shape(entity, path, image))
+        return addShape(Shape(entity, path, imageLib.getImage(entity.presentation)))
     }
 
     private fun addShape(s: Shape): Shape {
+        val e = s.entity
         shapes.add(s)
-        when (s.entity.category.ephemeral) {
-            true -> shortLivedShapes.add(s)
-            false -> longLivedShapes.add(s)
+        if (!e.category.ephemeral || e.presentation.type == PresentationType.FIGHTER) {
+            protectedShapes.add(s)
         }
-        when (s.entity.category) {
-            EntityCategory.UFO,
-            EntityCategory.USER -> collidingShapes.add(s)
-
-            else -> {}
+        if (e.category == EntityCategory.UFO || e.category == EntityCategory.USER) {
+            collidingShapes.add(s)
         }
-        println("Created: ${s.entity}")
+        //println("Created: ${s.entity}")
         return s
     }
 
     private fun removeShape(s: Shape): Shape {
         shapes.remove(s)
-        longLivedShapes.remove(s)
-        shortLivedShapes.remove(s)
+        protectedShapes.remove(s)
         collidingShapes.remove(s)
         collisionMap.remove(s)
-        println("Removed: ${s.entity}")
+        //println("Removed: ${s.entity.name}")
         return s
     }
 
-    fun handleFighterKilled(time: Long): Boolean {
+    private fun updateWinStatus(time: Long): Boolean {
         val game = entityService.game
-        if (game.live >= game.maxLives) {
-            println("You lost!")
+        if (game.lost()) {
+            println("(ツ) You lost!")
+            nextFighterTick = Long.MAX_VALUE
             return false
         }
-        println("Lives lost: ${game.live}")
-
+        println("(Θ︹Θ) Lives: remaining=${game.maxLives - game.live}, lost=${game.live}")
+        nextFighterTick = time + 3000
         game.live += 1
         return true
     }
@@ -171,8 +166,10 @@ class GameController(private val imageLib: ImageLib, private val musicLib: Music
 
     fun handleKeyPress(time: Long, keyCode: KeyCode) {
         when (keyCode) {
-            KeyCode.LEFT -> flightControlPath.addX(-20.0)
-            KeyCode.RIGHT -> flightControlPath.addX(20.0)
+            KeyCode.LEFT -> fighter.controlPath.setDeltaStopTime(time, ControlPath.Direction.LEFT)
+            KeyCode.RIGHT -> fighter.controlPath.setDeltaStopTime(time, ControlPath.Direction.RIGHT)
+            KeyCode.UP -> fighter.controlPath.setDeltaStopTime(time, ControlPath.Direction.UP)
+            KeyCode.DOWN -> fighter.controlPath.setDeltaStopTime(time, ControlPath.Direction.DOWN)
             else -> {}
         }
     }
