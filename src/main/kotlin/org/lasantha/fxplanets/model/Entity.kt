@@ -12,7 +12,7 @@ enum class EntityCategory(val ephemeral: Boolean = true) {
 
 class Entity(
     val name: String, val category: EntityCategory, val presentation: Presentation,
-    private val game: Game, private val inactiveIfOutOfBounds: Boolean = false
+    val game: Game, private val inactiveIfOutOfBounds: Boolean = false
 ) {
 
     var active = true

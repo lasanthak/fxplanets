@@ -3,22 +3,22 @@ package org.lasantha.fxplanets.view
 import javafx.scene.media.AudioClip
 import javafx.scene.media.Media
 import javafx.scene.media.MediaPlayer
-import org.lasantha.fxplanets.AppConf
+import org.lasantha.fxplanets.model.Game
 
 class MusicLib {
 
-    private val bgMusicPlayer = createBgMusicPlayer("music/bg_music_return.mp3")
+    private val bgMusicPlayer = createBgMusicPlayer("../music/bg_music_return.mp3")
 
-    val explosion = createAudioClip("music/explosion.mp3")
+    val explosion = createAudioClip("../music/explosion.mp3")
 
-    fun playMusic() {
-        if (AppConf.mainAudioEnabled && AppConf.musicEnabled) {
+    fun playMusic(game: Game) {
+        if (game.mainAudioEnabled && game.musicEnabled) {
             bgMusicPlayer.play()
         }
     }
 
-    fun pauseMusic() {
-        if (AppConf.mainAudioEnabled && AppConf.musicEnabled) {
+    fun pauseMusic(game: Game) {
+        if (game.mainAudioEnabled && game.musicEnabled) {
             bgMusicPlayer.pause()
         }
     }

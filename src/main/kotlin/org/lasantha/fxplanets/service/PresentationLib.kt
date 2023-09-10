@@ -3,7 +3,7 @@ package org.lasantha.fxplanets.service
 import org.lasantha.fxplanets.model.Presentation
 import org.lasantha.fxplanets.model.PresentationType
 
-class PresentationService {
+class PresentationLib {
     val sun: Presentation = Presentation("sun", PresentationType.STAR, 80, 80)
     val planet: Presentation = Presentation("planet", PresentationType.PLANET, 32, 32)
     val earth: Presentation = Presentation("earth", PresentationType.PLANET, 40, 40)
