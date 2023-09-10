@@ -2,19 +2,19 @@ package org.lasantha.fxplanets.view
 
 import javafx.scene.image.Image
 import javafx.scene.image.WritableImage
+import org.lasantha.fxplanets.model.ControlPath
 import org.lasantha.fxplanets.model.Presentation
 import org.lasantha.fxplanets.service.PresentationLib
-import kotlin.math.max
-import kotlin.math.min
-import kotlin.math.roundToInt
 
 class ImageLib(private val prService: PresentationLib) {
     private val imageMap: Map<Presentation, ImageWrapper>
+    private val controlImageMap: Map<Presentation, LRControlImage>
     private val exp1Frames: Array<Image>
     private val exp2Frames: Array<Image>
 
     init {
         val map = mutableMapOf<Presentation, ImageWrapper>()
+        val ctrlMap = mutableMapOf<Presentation, LRControlImage>()
         map[prService.sun] =
             StaticImage(WritableImage(image("sun.png").pixelReader, 4, 4, prService.sun.width, prService.sun.height))
         map[prService.planet] =
@@ -65,14 +65,17 @@ class ImageLib(private val prService: PresentationLib) {
             DynamicImage(100, Array(6) { WritableImage(r[it], 0, 5, prService.ship1.width, prService.ship1.height) })
         }
 
-        map[prService.fighter] = run {
+        val fighterImg = run {
             val r = image("fighter.png").pixelReader
             val w = prService.fighter.width
             val h = prService.fighter.height
-            LRLoopImage(duration = 100, frames = Array(7) { WritableImage(r, it * w, 0, w, h) })
+            LRControlImage(duration = 200, frames = Array(7) { WritableImage(r, it * w, 0, w, h) })
         }
+        map[prService.fighter] = fighterImg
+        ctrlMap[prService.fighter] = fighterImg
 
         imageMap = map.toMap()
+        controlImageMap = ctrlMap.toMap()
 
         exp1Frames = Array(48) {
             WritableImage(image("explosion1.png").pixelReader, it * prService.explosion1.width, 0, prService.explosion1.width, prService.explosion1.height)
@@ -83,7 +86,10 @@ class ImageLib(private val prService: PresentationLib) {
     }
 
     fun getImage(presentation: Presentation): ImageWrapper =
-        imageMap[presentation] ?: throw IllegalArgumentException("Presentation not implemented for id=${presentation.id}")
+        imageMap[presentation] ?: throw IllegalArgumentException("No image for presentation id=${presentation.id}")
+
+    fun getControlImage(presentation: Presentation): LRControlImage =
+        controlImageMap[presentation] ?: throw IllegalArgumentException("No control image for presentation id=${presentation.id}")
 
     fun newImage(presentation: Presentation, startTime: Long): ImageWrapper = when (presentation) {
         prService.explosion1 -> SingleLoopImage(startTime = startTime, duration = 50, frames = exp1Frames)
@@ -144,12 +150,34 @@ class SingleLoopImage(private val startTime: Long, private val duration: Long, p
     override fun frame(time: Long) = frames[((time - startTime).coerceAtLeast(0) / duration).toInt()]
 }
 
-class LRLoopImage(private val duration: Long, private val frames: Array<Image>) : DynamicImage(duration, frames) {
-    private val minId = 0
-    private val midId = frames.size / 2
-    private val maxId = frames.size - 1
+class LRControlImage(private val duration: Long, private val frames: Array<Image>) : DynamicImage(duration, frames) {
+    private val defaultId = frames.size / 2
+
+    private var id = defaultId
+
+    private val stepDelta = duration / ((frames.size + 1) / 2)
+    private var direction = ControlPath.Direction.LEFT
+    private var deltaStopTime = -1L
+
     override fun frame(time: Long): Image {
-        val id = midId + (time / duration).toDouble().roundToInt()
-        return frames[min(max(id, minId), maxId)]
+        if (time < deltaStopTime) {
+            val a = ((deltaStopTime - time) / stepDelta).toInt()
+            val newId = when (direction) {
+                ControlPath.Direction.LEFT -> id - a
+                ControlPath.Direction.RIGHT -> id + a
+                else -> defaultId
+            }
+            if (newId >= 0 && newId < frames.size) {
+                id = newId
+            }
+        } else {
+            id = defaultId
+        }
+        return frames[id]
+    }
+
+    fun setDeltaStopTime(time: Long, direction: ControlPath.Direction) {
+        deltaStopTime = time + duration
+        this.direction = direction
     }
 }

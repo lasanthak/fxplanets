@@ -79,13 +79,15 @@ class LinearPath(
 /**
  * @param startX - x coordinate of the starting point
  * @param startY - y coordinate of the starting point
+ * @param v - velocity per sec
  */
-class LRControlPath(startX: Double, startY: Double, entity: Entity, val spaceDelta: Double, val timeDelta: Long) : ControlPath {
+class LRControlPath(startX: Double, startY: Double, v: Double, val timeDelta: Long, entity: Entity) : ControlPath {
     private var x = startX
     private var y = startY
     private var direction = ControlPath.Direction.LEFT
     private var deltaStopTime = -1L
 
+    private val spaceDelta = v / entity.game.fps.toDouble()
     private val minX = 5.0
     private val maxX = entity.game.width - entity.presentation.width - 5.0
     private val minY = startY - 200.0
@@ -113,11 +115,4 @@ class LRControlPath(startX: Double, startY: Double, entity: Entity, val spaceDel
         deltaStopTime = time + timeDelta
         this.direction = direction
     }
-}
-
-
-object NoOpControlPath : ControlPath {
-    override fun location(time: Long): Pair<Double, Double> = -1.0 to -1.0
-
-    override fun setDeltaStopTime(time: Long, direction: ControlPath.Direction) {}
 }

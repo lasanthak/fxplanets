@@ -11,7 +11,8 @@ import org.lasantha.fxplanets.service.EntityService
 import org.lasantha.fxplanets.view.ImageLib
 import org.lasantha.fxplanets.view.MusicLib
 
-class GameController(private val imageLib: ImageLib, private val musicLib: MusicLib, val entityService: EntityService) {
+@Suppress("UNUSED_PARAMETER")
+class GameController(private val imageLib: ImageLib, private val musicLib: MusicLib, private val entityService: EntityService) {
     private lateinit var gc: GraphicsContext
 
     private val shapes = LinkedHashSet<Shape>()
@@ -23,7 +24,6 @@ class GameController(private val imageLib: ImageLib, private val musicLib: Music
     private var nextFighterTick = Long.MAX_VALUE
     private var nextUFOTick = 1500L
 
-
     init {
         val sunEntity = entityService.sun()
         val earthEntity = entityService.earth()
@@ -33,7 +33,7 @@ class GameController(private val imageLib: ImageLib, private val musicLib: Music
         createAddShape(entityService.moon(), entityService.moonPath(earthEntity))
 
         val fe = entityService.fighter()
-        val cs = ControlShape(fe, entityService.fighterPath(fe), imageLib.getImage(fe.presentation))
+        val cs = ControlShape(fe, entityService.fighterPath(fe), imageLib.getControlImage(fe.presentation))
         addShape(cs)
         fighter = cs
     }
@@ -96,7 +96,7 @@ class GameController(private val imageLib: ImageLib, private val musicLib: Music
         if (nextFighterTick <= time) {
             nextFighterTick = Long.MAX_VALUE
             val fe = entityService.fighter()
-            val cs = ControlShape(fe, entityService.fighterPath(fe), imageLib.getImage(fe.presentation))
+            val cs = ControlShape(fe, entityService.fighterPath(fe), imageLib.getControlImage(fe.presentation))
             shapesToAdd.add(cs)
             fighter = cs
         }
@@ -128,7 +128,6 @@ class GameController(private val imageLib: ImageLib, private val musicLib: Music
         if (e.category == EntityCategory.UFO || e.category == EntityCategory.USER) {
             collidingShapes.add(s)
         }
-        //println("Created: ${s.entity}")
         return s
     }
 
@@ -137,7 +136,6 @@ class GameController(private val imageLib: ImageLib, private val musicLib: Music
         protectedShapes.remove(s)
         collidingShapes.remove(s)
         collisionMap.remove(s)
-        //println("Removed: ${s.entity.name}")
         return s
     }
 
@@ -166,10 +164,26 @@ class GameController(private val imageLib: ImageLib, private val musicLib: Music
 
     fun handleKeyPress(time: Long, keyCode: KeyCode) {
         when (keyCode) {
-            KeyCode.LEFT -> fighter.controlPath.setDeltaStopTime(time, ControlPath.Direction.LEFT)
-            KeyCode.RIGHT -> fighter.controlPath.setDeltaStopTime(time, ControlPath.Direction.RIGHT)
-            KeyCode.UP -> fighter.controlPath.setDeltaStopTime(time, ControlPath.Direction.UP)
-            KeyCode.DOWN -> fighter.controlPath.setDeltaStopTime(time, ControlPath.Direction.DOWN)
+            KeyCode.LEFT -> {
+                fighter.controlPath.setDeltaStopTime(time, ControlPath.Direction.LEFT)
+                fighter.controlImage.setDeltaStopTime(time, ControlPath.Direction.LEFT)
+            }
+
+            KeyCode.RIGHT -> {
+                fighter.controlPath.setDeltaStopTime(time, ControlPath.Direction.RIGHT)
+                fighter.controlImage.setDeltaStopTime(time, ControlPath.Direction.RIGHT)
+            }
+
+            KeyCode.UP -> {
+                fighter.controlPath.setDeltaStopTime(time, ControlPath.Direction.UP)
+                fighter.controlImage.setDeltaStopTime(time, ControlPath.Direction.UP)
+            }
+
+            KeyCode.DOWN -> {
+                fighter.controlPath.setDeltaStopTime(time, ControlPath.Direction.DOWN)
+                fighter.controlImage.setDeltaStopTime(time, ControlPath.Direction.DOWN)
+            }
+
             else -> {}
         }
     }

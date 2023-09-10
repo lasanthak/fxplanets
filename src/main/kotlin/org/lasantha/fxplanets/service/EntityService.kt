@@ -82,9 +82,6 @@ class EntityService(val game: Game, val prLib: PresentationLib) {
         Entity("Fighter-${game.live}", EntityCategory.USER, prLib.fighter, game, inactiveIfOutOfBounds = true)
 
     fun fighterPath(entity: Entity) =
-        LRControlPath(
-            startX = centerX - entity.presentation.width / 2.0, startY = game.height - 200.0,
-            entity = entity, spaceDelta = 10.0, timeDelta = 240L
-        )
+        LRControlPath(startX = centerX - entity.presentation.width / 2.0, startY = game.height - 200.0, v = 400.0, timeDelta = 240, entity = entity)
 
 }
