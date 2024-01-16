@@ -12,7 +12,7 @@ class Game(val width: Double, val height: Double) {
     //40 fps = duration 25 ms
     //33 fps = duration 30 ms
     //25 fps = duration 40 ms
-    val fps = 60
+    val fps = 33
     val tick = (1000.0 / fps.toDouble()).roundToLong()
 
     val maxLives = 5

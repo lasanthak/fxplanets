@@ -12,7 +12,10 @@ import org.lasantha.fxplanets.view.ImageLib
 import org.lasantha.fxplanets.view.MusicLib
 
 @Suppress("UNUSED_PARAMETER")
-class GameController(private val imageLib: ImageLib, private val musicLib: MusicLib, private val entityService: EntityService) {
+class GameController(
+    private val keyState: KeyState, private val imageLib: ImageLib,
+    private val musicLib: MusicLib, private val entityService: EntityService
+) {
     private lateinit var gc: GraphicsContext
 
     private val shapes = LinkedHashSet<Shape>()
@@ -46,6 +49,7 @@ class GameController(private val imageLib: ImageLib, private val musicLib: Music
     }
 
     fun update(time: Long) {
+        updateKeyStates(time)
         for (s in shapes) {
             s.entity.update(s.path.location(time))
         }
@@ -162,29 +166,22 @@ class GameController(private val imageLib: ImageLib, private val musicLib: Music
         musicLib.playMusic(game)
     }
 
-    fun handleKeyPress(time: Long, keyCode: KeyCode) {
-        when (keyCode) {
-            KeyCode.LEFT -> {
-                fighter.controlPath.setDeltaStopTime(time, ControlPath.Direction.LEFT)
-                fighter.controlImage.setDeltaStopTime(time, ControlPath.Direction.LEFT)
-            }
-
-            KeyCode.RIGHT -> {
-                fighter.controlPath.setDeltaStopTime(time, ControlPath.Direction.RIGHT)
-                fighter.controlImage.setDeltaStopTime(time, ControlPath.Direction.RIGHT)
-            }
-
-            KeyCode.UP -> {
-                fighter.controlPath.setDeltaStopTime(time, ControlPath.Direction.UP)
-                fighter.controlImage.setDeltaStopTime(time, ControlPath.Direction.UP)
-            }
-
-            KeyCode.DOWN -> {
-                fighter.controlPath.setDeltaStopTime(time, ControlPath.Direction.DOWN)
-                fighter.controlImage.setDeltaStopTime(time, ControlPath.Direction.DOWN)
-            }
-
-            else -> {}
+    fun updateKeyStates(time: Long) {
+        if (keyState.left) {
+            fighter.controlPath.setDeltaStopTime(time, ControlPath.Direction.LEFT)
+            fighter.controlImage.setDeltaStopTime(time, ControlPath.Direction.LEFT)
+        }
+        if (keyState.right) {
+            fighter.controlPath.setDeltaStopTime(time, ControlPath.Direction.RIGHT)
+            fighter.controlImage.setDeltaStopTime(time, ControlPath.Direction.RIGHT)
+        }
+        if (keyState.up) {
+            fighter.controlPath.setDeltaStopTime(time, ControlPath.Direction.UP)
+            fighter.controlImage.setDeltaStopTime(time, ControlPath.Direction.UP)
+        }
+        if (keyState.down) {
+            fighter.controlPath.setDeltaStopTime(time, ControlPath.Direction.DOWN)
+            fighter.controlImage.setDeltaStopTime(time, ControlPath.Direction.DOWN)
         }
     }
 }

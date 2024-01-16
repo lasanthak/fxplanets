@@ -81,11 +81,13 @@ class LinearPath(
  * @param startY - y coordinate of the starting point
  * @param v - velocity per sec
  */
-class LRControlPath(startX: Double, startY: Double, v: Double, val timeDelta: Long, entity: Entity) : ControlPath {
+class LRUDControlPath(startX: Double, startY: Double, v: Double, val timeDelta: Long, entity: Entity) : ControlPath {
     private var x = startX
     private var y = startY
-    private var direction = ControlPath.Direction.LEFT
-    private var deltaStopTime = -1L
+    private var deltaStopTimeL = -1L
+    private var deltaStopTimeR = -1L
+    private var deltaStopTimeU = -1L
+    private var deltaStopTimeD = -1L
 
     private val spaceDelta = v / entity.game.fps.toDouble()
     private val minX = 5.0
@@ -94,25 +96,41 @@ class LRControlPath(startX: Double, startY: Double, v: Double, val timeDelta: Lo
     private val maxY = entity.game.height - entity.presentation.height - 5.0
 
     override fun location(time: Long): Pair<Double, Double> {
-        if (time < deltaStopTime) {
-            val (newX, newY) = when (direction) {
-                ControlPath.Direction.LEFT -> x - spaceDelta to y
-                ControlPath.Direction.RIGHT -> x + spaceDelta to y
-                ControlPath.Direction.UP -> x to y - spaceDelta
-                ControlPath.Direction.DOWN -> x to y + spaceDelta
-            }
+        if (time < deltaStopTimeL) {
+            val newX = x - spaceDelta
             if (newX > minX && newX < maxX) {
                 x = newX
             }
+        }
+        if (time < deltaStopTimeR) {
+            val newX = x + spaceDelta
+            if (newX > minX && newX < maxX) {
+                x = newX
+            }
+        }
+        if (time < deltaStopTimeU) {
+            val newY = y - spaceDelta
             if (newY > minY && newY < maxY) {
                 y = newY
             }
         }
+        if (time < deltaStopTimeD) {
+            val newY = y + spaceDelta
+            if (newY > minY && newY < maxY) {
+                y = newY
+            }
+        }
+
         return x to y
     }
 
     override fun setDeltaStopTime(time: Long, direction: ControlPath.Direction) {
-        deltaStopTime = time + timeDelta
-        this.direction = direction
+        val t = time + timeDelta
+        when (direction) {
+            ControlPath.Direction.LEFT -> deltaStopTimeL = t
+            ControlPath.Direction.RIGHT -> deltaStopTimeR = t
+            ControlPath.Direction.UP -> deltaStopTimeU = t
+            ControlPath.Direction.DOWN -> deltaStopTimeD = t
+        }
     }
 }

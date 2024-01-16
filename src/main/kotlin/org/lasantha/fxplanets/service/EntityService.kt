@@ -4,7 +4,7 @@ import org.lasantha.fxplanets.model.EllipticalPath
 import org.lasantha.fxplanets.model.Entity
 import org.lasantha.fxplanets.model.EntityCategory
 import org.lasantha.fxplanets.model.Game
-import org.lasantha.fxplanets.model.LRControlPath
+import org.lasantha.fxplanets.model.LRUDControlPath
 import org.lasantha.fxplanets.model.LinearPath
 import org.lasantha.fxplanets.model.Path
 import org.lasantha.fxplanets.model.PiggyBackPath
@@ -82,6 +82,8 @@ class EntityService(val game: Game, val prLib: PresentationLib) {
         Entity("Fighter-${game.live}", EntityCategory.USER, prLib.fighter, game, inactiveIfOutOfBounds = true)
 
     fun fighterPath(entity: Entity) =
-        LRControlPath(startX = centerX - entity.presentation.width / 2.0, startY = game.height - 200.0, v = 400.0, timeDelta = 240, entity = entity)
+        LRUDControlPath(startX = centerX - entity.presentation.width / 2.0,
+            startY = game.height - 200.0, v = 400.0,
+            timeDelta = 20, entity = entity)
 
 }

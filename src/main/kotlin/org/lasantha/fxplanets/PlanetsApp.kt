@@ -19,6 +19,8 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.lasantha.fxplanets.controller.GameController
+import org.lasantha.fxplanets.controller.KeyState
+import org.lasantha.fxplanets.model.ControlPath
 import org.lasantha.fxplanets.model.Game
 import org.lasantha.fxplanets.service.EntityService
 import org.lasantha.fxplanets.service.PresentationLib
@@ -33,7 +35,8 @@ class PlanetsApp : Application() {
     private val prLib = PresentationLib()
     private val musicLib = MusicLib()
     private val imageLib = ImageLib(prLib)
-    private val context = Context(prLib, musicLib, imageLib)
+    private val keyState = KeyState()
+    private val context = Context(keyState, prLib, musicLib, imageLib)
     private val frameDuration = context.game.tick
     private val gameLoop = Timeline()
 
@@ -108,10 +111,45 @@ class PlanetsApp : Application() {
         }
 
         scene.setOnKeyPressed { e ->
-            if (e.code == KeyCode.ESCAPE) stage.close()
+            val code = e.code
+            if (code == KeyCode.ESCAPE && e.isControlDown) {
+                stage.close()
+            }
 
-            context.controller.handleKeyPress(linearT, e.code)
+            if (code.isArrowKey) {
+                if (code == KeyCode.LEFT) {
+                    keyState.left = true
+                }
+                if (code == KeyCode.RIGHT) {
+                    keyState.right = true
+                }
+                if (code == KeyCode.UP) {
+                    keyState.up = true
+                }
+                if (code == KeyCode.DOWN) {
+                    keyState.down = true
+                }
+            }
         }
+
+        scene.setOnKeyReleased { e ->
+            val code = e.code
+            if (code.isArrowKey) {
+                if (code == KeyCode.LEFT) {
+                    keyState.left = false
+                }
+                if (code == KeyCode.RIGHT) {
+                    keyState.right = false
+                }
+                if (code == KeyCode.UP) {
+                    keyState.up = false
+                }
+                if (code == KeyCode.DOWN) {
+                    keyState.down = false
+                }
+            }
+        }
+
 
         var nextBigTick = 3000L
         val gameStartT = System.currentTimeMillis()
@@ -178,10 +216,10 @@ class PlanetsApp : Application() {
     }
 }
 
-class Context(val prLib: PresentationLib, val musicLib: MusicLib, val imageLib: ImageLib) {
+class Context(val keyState: KeyState, val prLib: PresentationLib, val musicLib: MusicLib, val imageLib: ImageLib) {
     val game = Game(width = 1600.0, height = 1200.0)
     val entityService = EntityService(game, prLib)
-    val controller = GameController(imageLib, musicLib, entityService)
+    val controller = GameController(keyState, imageLib, musicLib, entityService)
 }
 
 fun main() {
