@@ -41,11 +41,13 @@ class GameController(
         fighter = cs
     }
 
-    fun initGC(gc: GraphicsContext) {
+    fun start(gc: GraphicsContext) {
         if (this::gc.isInitialized) {
             throw IllegalStateException("GraphicsContext is already initialized")
         }
         this.gc = gc
+
+        musicLib.playMusic(entityService.game)
     }
 
     fun update(time: Long) {
@@ -157,13 +159,11 @@ class GameController(
     }
 
     fun handlePause(time: Long) {
-        val game = entityService.game
-        musicLib.pauseMusic(game)
+        musicLib.pauseMusic(entityService.game)
     }
 
     fun handleResume(time: Long) {
-        val game = entityService.game
-        musicLib.playMusic(game)
+        musicLib.playMusic(entityService.game)
     }
 
     fun updateKeyStates(time: Long) {

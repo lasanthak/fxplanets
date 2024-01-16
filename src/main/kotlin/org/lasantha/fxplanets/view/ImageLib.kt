@@ -170,14 +170,17 @@ class LRControlImage(private val duration: Long, private val frames: Array<Image
             if (newId >= 0 && newId < frames.size) {
                 id = newId
             }
-        } else {
+        } else if (id != defaultId) {
             id = defaultId
         }
+
         return frames[id]
     }
 
     fun setDeltaStopTime(time: Long, direction: ControlPath.Direction) {
-        deltaStopTime = time + duration
-        this.direction = direction
+        if ((direction == ControlPath.Direction.LEFT || direction == ControlPath.Direction.RIGHT) && (time > deltaStopTime)) {
+            deltaStopTime = time + duration
+            this.direction = direction
+        }
     }
 }

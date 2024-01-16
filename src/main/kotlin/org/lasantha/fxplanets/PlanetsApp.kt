@@ -69,7 +69,6 @@ class PlanetsApp : Application() {
         val gc = dynamicCanvas.graphicsContext2D
         gc.isImageSmoothing = false
 
-        context.controller.initGC(gc)
 
         stage.icons.add(0, imageLib.icon())
         root.style = "-fx-background-color:black"
@@ -112,7 +111,7 @@ class PlanetsApp : Application() {
 
         scene.setOnKeyPressed { e ->
             val code = e.code
-            if (code == KeyCode.ESCAPE && e.isControlDown) {
+            if (code == KeyCode.ESCAPE && e.isShiftDown) {
                 stage.close()
             }
 
@@ -184,9 +183,9 @@ class PlanetsApp : Application() {
             }
         })
 
+        context.controller.start(gc)
         gameLoop.keyFrames.add(keyFrame)
         gameLoop.play()
-        musicLib.playMusic(context.game)
         stage.show()
     }
 
